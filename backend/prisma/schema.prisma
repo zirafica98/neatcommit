@@ -1,0 +1,156 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  githubId      Int       @unique
+  username      String
+  email         String?
+  avatarUrl     String?
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  installations Installation[]
+  reviews       Review[]
+
+  @@index([githubId])
+  @@map("users")
+}
+
+model Installation {
+  id                String   @id @default(cuid())
+  installationId    Int      @unique // GitHub installation ID
+  accountId         Int      // GitHub account ID (user or org)
+  accountType       String   // User or Organization
+  accountLogin      String
+  targetType        String   // Installation target type
+  userId            String?  // Link to User if personal installation
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositories      Repository[]
+  reviews           Review[]
+
+  @@index([installationId])
+  @@index([userId])
+  @@map("installations")
+}
+
+model Repository {
+  id                String   @id @default(cuid())
+  installationId    String
+  githubRepoId      Int      @unique
+  name              String
+  fullName          String   // owner/repo
+  owner             String
+  private           Boolean  @default(false)
+  defaultBranch     String
+  language          String?
+  enabled           Boolean  @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  installation      Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  reviews           Review[]
+
+  @@unique([installationId, fullName])
+  @@index([installationId])
+  @@index([githubRepoId])
+  @@map("repositories")
+}
+
+model Review {
+  id                String   @id @default(cuid())
+  installationId    String
+  repositoryId      String
+  userId            String?
+  githubPrNumber     Int
+  githubPrId        String   @unique
+  githubPrUrl       String
+  githubPrTitle     String
+  githubPrState     String   // open, closed, merged
+  githubSha         String
+  status            String   @default("pending") // pending, processing, completed, failed
+  securityScore     Int?     // 0-100
+  totalIssues       Int      @default(0)
+  criticalIssues    Int      @default(0)
+  highIssues        Int      @default(0)
+  mediumIssues      Int      @default(0)
+  lowIssues         Int      @default(0)
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  installation      Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  repository        Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  issues            Issue[]
+  comments          ReviewComment[]
+
+  @@index([installationId])
+  @@index([repositoryId])
+  @@index([githubPrId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("reviews")
+}
+
+model Issue {
+  id                String   @id @default(cuid())
+  reviewId          String
+  filePath          String
+  line              Int?
+  column            Int?
+  severity          String   // CRITICAL, HIGH, MEDIUM, LOW, INFO
+  category          String   // SECURITY, PERFORMANCE, QUALITY, BEST_PRACTICE
+  title             String
+  description       String
+  suggestedFix      String?  @db.Text
+  codeSnippet       String?  @db.Text
+  cweId             String?  // CWE identifier
+  owaspCategory     String?  // OWASP category
+  references        String[]  // Array of reference URLs
+  status            String   @default("open") // open, dismissed, resolved
+  dismissedAt       DateTime?
+  resolvedAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  review            Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([severity])
+  @@index([category])
+  @@index([status])
+  @@map("issues")
+}
+
+model ReviewComment {
+  id                String   @id @default(cuid())
+  reviewId          String
+  githubCommentId   String   @unique // GitHub comment IDs can be very large
+  issueId           String?
+  filePath          String
+  line              Int?
+  body              String   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  review            Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@index([githubCommentId])
+  @@map("review_comments")
+}

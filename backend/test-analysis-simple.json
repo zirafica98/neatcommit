@@ -1,0 +1,4 @@
+{
+  "code": "function login(username, password) {\n  // ❌ Hardcoded password\n  const adminPassword = \"admin123\";\n  \n  // ❌ SQL injection\n  const query = `SELECT * FROM users WHERE username = \"${username}\" AND password = \"${password}\"`;\n  \n  // ❌ eval() korišćenje\n  const userInput = req.body.code;\n  eval(userInput);\n  \n  // ❌ Insecure random\n  const token = Math.random().toString();\n  \n  // ❌ HTTP umesto HTTPS\n  fetch(\"http://api.example.com/data\");\n  \n  // ❌ Weak crypto\n  const hash = require(\"crypto\").createHash(\"md5\").update(password).digest(\"hex\");\n  \n  return db.query(query);\n}",
+  "filename": "src/auth.ts"
+}
