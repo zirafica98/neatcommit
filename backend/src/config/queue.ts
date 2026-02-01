@@ -24,3 +24,4 @@ export const queueOptions: QueueOptions = {
 };
 
 export const analysisQueue = new Queue('code-analysis', queueOptions);
+export const documentationQueue = new Queue('documentation', queueOptions);

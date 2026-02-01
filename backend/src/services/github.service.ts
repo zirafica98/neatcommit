@@ -307,9 +307,11 @@ export async function getInstallationRepositories(installationId: number) {
       throw new Error('Octokit instance does not have rest property');
     }
 
-    const { data } = await octokit.rest.apps.listInstallationReposForAuthenticatedUser({
-      installation_id: installationId,
+    // Za installation token, koristimo GET /installation/repositories endpoint
+    const response = await octokit.request('GET /installation/repositories', {
+      per_page: 100,
     });
+    const data = response.data;
 
     logger.debug('Installation repositories retrieved', {
       installationId,

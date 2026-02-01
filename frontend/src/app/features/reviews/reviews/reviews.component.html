@@ -1,0 +1,108 @@
+<div class="reviews-container">
+  <div class="reviews-header fade-in">
+    <div>
+      <h1>Reviews</h1>
+      <p class="subtitle">Code review history and analysis results</p>
+    </div>
+    <div class="filter-container">
+      <mat-form-field appearance="outline">
+        <mat-label>Filter by Severity</mat-label>
+        <mat-select [value]="filterSeverity" (selectionChange)="onFilterChange($event.value)">
+          <mat-option value="all">All Issues</mat-option>
+          <mat-option value="CRITICAL">Critical</mat-option>
+          <mat-option value="HIGH">High</mat-option>
+          <mat-option value="MEDIUM">Medium</mat-option>
+          <mat-option value="LOW">Low</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading reviews...</p>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="loadReviews()">
+      Retry
+    </button>
+  </div>
+
+  <div *ngIf="!loading && !error" class="reviews-content">
+    <div *ngIf="reviews.length === 0" class="empty-state">
+      <mat-icon>rate_review</mat-icon>
+      <h3>No reviews found</h3>
+      <p>Reviews will appear here when pull requests are analyzed</p>
+    </div>
+
+    <div *ngIf="reviews.length > 0" class="reviews-list">
+      <mat-card *ngFor="let review of reviews" class="review-card" [class.analyzing]="activelyAnalyzingIds.has(review.id)" [routerLink]="['/reviews', review.id]">
+        <mat-card-header>
+          <div class="review-header">
+            <div class="review-title-section">
+              <mat-card-title>{{ review.githubPrTitle }}</mat-card-title>
+              <div *ngIf="activelyAnalyzingIds.has(review.id)" class="pending-badge">
+                <mat-spinner diameter="16"></mat-spinner>
+                <span>Analyzing...</span>
+              </div>
+              <mat-card-subtitle>
+                <span>{{ review.repository?.fullName || 'Unknown' }}</span>
+                <span class="separator">•</span>
+                <span>PR #{{ review.githubPrNumber }}</span>
+                <span class="separator">•</span>
+                <span>{{ review.createdAt | date: 'short' }}</span>
+              </mat-card-subtitle>
+            </div>
+            <div class="review-badges">
+              <span class="status-badge" [style.background-color]="getStatusColor(review.status) + '20'" [style.color]="getStatusColor(review.status)">
+                {{ review.status | uppercase }}
+              </span>
+              <span class="score-badge" [style.color]="getScoreColor(review.securityScore)">
+                {{ review.securityScore }}/100
+              </span>
+            </div>
+          </div>
+        </mat-card-header>
+
+        <mat-card-content>
+          <div class="review-stats">
+            <div class="stat-item">
+              <mat-icon>bug_report</mat-icon>
+              <span>{{ review.totalIssues }} Issues</span>
+            </div>
+            <div *ngIf="review.criticalIssues > 0" class="stat-item critical">
+              <mat-icon>error</mat-icon>
+              <span>{{ review.criticalIssues }} Critical</span>
+            </div>
+            <div *ngIf="review.highIssues > 0" class="stat-item high">
+              <mat-icon>warning</mat-icon>
+              <span>{{ review.highIssues }} High</span>
+            </div>
+            <div *ngIf="review.mediumIssues > 0" class="stat-item medium">
+              <mat-icon>info</mat-icon>
+              <span>{{ review.mediumIssues }} Medium</span>
+            </div>
+            <div *ngIf="review.lowIssues > 0" class="stat-item low">
+              <mat-icon>check_circle</mat-icon>
+              <span>{{ review.lowIssues }} Low</span>
+            </div>
+          </div>
+        </mat-card-content>
+
+        <mat-card-actions>
+          <a mat-button color="primary" [attr.href]="review.githubPrUrl" target="_blank">
+            <mat-icon>open_in_new</mat-icon>
+            View PR on GitHub
+          </a>
+          <button mat-button [routerLink]="['/reviews', review.id]">
+            View Details
+            <mat-icon>arrow_forward</mat-icon>
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  </div>
+</div>

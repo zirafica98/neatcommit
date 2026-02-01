@@ -22,6 +22,7 @@ model User {
 
   installations Installation[]
   reviews       Review[]
+  documentations Documentation[]
 
   @@index([githubId])
   @@map("users")
@@ -63,6 +64,7 @@ model Repository {
 
   installation      Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
   reviews           Review[]
+  documentations    Documentation[]
 
   @@unique([installationId, fullName])
   @@index([installationId])
@@ -153,4 +155,31 @@ model ReviewComment {
   @@index([reviewId])
   @@index([githubCommentId])
   @@map("review_comments")
+}
+
+model Documentation {
+  id                String   @id @default(cuid())
+  repositoryId      String
+  userId            String?
+  status            String   @default("pending") // pending, processing, completed, failed
+  fileName          String?  // Generated .doc file name
+  filePath          String?  // Path to stored .doc file
+  fileUrl           String?  // URL to download the file
+  fileSize          Int?     // File size in bytes
+  totalFiles        Int      @default(0) // Number of files analyzed
+  totalLines        Int      @default(0) // Total lines of code analyzed
+  errorMessage      String?  @db.Text
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  repository        Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  user              User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([repositoryId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("documentations")
 }

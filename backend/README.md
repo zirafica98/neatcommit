@@ -1,6 +1,6 @@
-# 🚀 Elementer Backend - AI Code Review Platform
+# 🚀 NeatCommit Backend - AI Code Review Platform
 
-**Elementer** je AI-powered code review sistem koji automatski analizira Pull Request-ove na GitHub-u i postavlja detaljne komentare sa security, performance i best practice preporukama.
+**NeatCommit** je AI-powered code review sistem koji automatski analizira Pull Request-ove na GitHub-u i postavlja detaljne komentare sa security, performance i best practice preporukama.
 
 ---
 

@@ -1,0 +1,24 @@
+<div class="login-container">
+  <mat-card class="login-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>security</mat-icon>
+        NeatCommit
+      </mat-card-title>
+      <mat-card-subtitle>AI Code Review Platform</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <p class="description">
+        Connect your GitHub account to start automated code reviews and security analysis.
+      </p>
+    </mat-card-content>
+
+    <mat-card-actions>
+      <button mat-raised-button color="primary" (click)="loginWithGitHub()" class="github-button">
+        <mat-icon>code</mat-icon>
+        Sign in with GitHub
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

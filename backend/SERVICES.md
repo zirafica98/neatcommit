@@ -670,7 +670,7 @@ flowchart TD
 
 ---
 
-*This analysis was performed by Elementer AI Code Review*
+*This analysis was performed by NeatCommit AI Code Review*
 ```
 
 ### Format Inline Komentara

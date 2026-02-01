@@ -1,0 +1,287 @@
+.documentation-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.header {
+  margin-bottom: 32px;
+
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 32px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: #333;
+
+    mat-icon {
+      font-size: 36px;
+      width: 36px;
+      height: 36px;
+      color: #667eea;
+    }
+  }
+
+  p {
+    color: #666;
+    font-size: 16px;
+    margin: 0;
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px;
+  gap: 16px;
+
+  p {
+    color: #666;
+  }
+}
+
+.error-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px;
+  background: #ffebee;
+  color: #c62828;
+
+  mat-icon {
+    color: #c62828;
+  }
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.repository-selection {
+  padding: 24px;
+
+  h2 {
+    margin: 0 0 20px 0;
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  .repository-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .repo-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
+
+    &.selected {
+      background: #667eea;
+      color: white;
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    mat-icon {
+      margin-right: 4px;
+    }
+  }
+}
+
+.actions-card {
+  padding: 24px;
+
+  .selected-repo-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    p {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #666;
+      margin: 0;
+      font-size: 14px;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      cursor: pointer;
+      pointer-events: auto;
+      position: relative;
+      z-index: 1;
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+
+      .inline-spinner {
+        display: inline-block;
+        margin-right: 8px;
+      }
+    }
+  }
+}
+
+.documentations-card {
+  padding: 24px;
+
+  h2 {
+    margin: 0 0 20px 0;
+    font-size: 24px;
+    font-weight: 600;
+  }
+
+  .documentations-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .doc-item {
+    padding: 20px;
+
+    .doc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+
+      h3 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        font-weight: 600;
+
+        mat-icon {
+          color: #667eea;
+        }
+      }
+
+      .doc-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        color: #666;
+        font-size: 14px;
+        margin: 0;
+
+        span {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+
+          mat-icon {
+            font-size: 16px;
+            width: 16px;
+            height: 16px;
+          }
+        }
+      }
+    }
+
+    .doc-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-top: 16px;
+
+      .processing-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #667eea;
+        font-size: 14px;
+      }
+
+      .error-message {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #c62828;
+        font-size: 14px;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+  }
+}
+
+.empty-state {
+  padding: 64px;
+  text-align: center;
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: #ccc;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: #666;
+    font-size: 16px;
+    margin: 8px 0;
+
+    &.hint {
+      font-size: 14px;
+      color: #999;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .documentation-container {
+    padding: 16px;
+  }
+
+  .actions-card .selected-repo-info {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .repository-selection .repository-list {
+    flex-direction: column;
+  }
+}

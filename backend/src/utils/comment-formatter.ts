@@ -95,7 +95,7 @@ export function formatSummaryComment(
   }
 
   comment += `---\n\n`;
-  comment += `*This analysis was performed automatically by Elementer AI Code Review*\n`;
+  comment += `*This analysis was performed automatically by NeatCommit AI Code Review*\n`;
 
   return comment;
 }

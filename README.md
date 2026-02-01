@@ -1,4 +1,4 @@
-# Elementer - AI Code Review Platform
+# NeatCommit - AI Code Review Platform
 
 AI-powered code review and security auditing platform for GitHub repositories.
 

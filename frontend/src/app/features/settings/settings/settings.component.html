@@ -1,0 +1,58 @@
+<div class="settings-container">
+  <div class="settings-header fade-in">
+    <h1>Settings</h1>
+    <p class="subtitle">Manage your account and preferences</p>
+  </div>
+
+  <div *ngIf="user" class="settings-content">
+    <mat-card class="profile-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>person</mat-icon>
+          Profile Information
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="profile-section">
+          <div class="avatar-section">
+            <img [src]="user.avatarUrl || '/assets/default-avatar.png'" [alt]="user.username" class="avatar">
+          </div>
+          <div class="profile-info">
+            <mat-form-field appearance="outline">
+              <mat-label>Username</mat-label>
+              <input matInput [value]="user.username" readonly>
+            </mat-form-field>
+            <mat-form-field appearance="outline" *ngIf="user.email">
+              <mat-label>Email</mat-label>
+              <input matInput [value]="user.email" readonly>
+            </mat-form-field>
+            <mat-form-field appearance="outline" *ngIf="user.name">
+              <mat-label>Name</mat-label>
+              <input matInput [value]="user.name" readonly>
+            </mat-form-field>
+            <div class="profile-meta">
+              <p><strong>GitHub ID:</strong> {{ user.githubId }}</p>
+              <p><strong>Member since:</strong> {{ user.createdAt | date: 'medium' }}</p>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="actions-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>link</mat-icon>
+          GitHub Account
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <p>View your GitHub profile and manage connected repositories.</p>
+        <button mat-raised-button color="primary" [attr.href]="'https://github.com/' + user.username" target="_blank">
+          <mat-icon>open_in_new</mat-icon>
+          View GitHub Profile
+        </button>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

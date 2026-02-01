@@ -1,0 +1,125 @@
+<div class="documentation-container">
+  <div class="header">
+    <h1>
+      <mat-icon>description</mat-icon>
+      Generate Documentation
+    </h1>
+    <p>AI-powered documentation generation for your repositories</p>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading repositories...</p>
+  </div>
+
+  <!-- Error State -->
+  <mat-card *ngIf="error && !loading" class="error-card">
+    <mat-icon>error</mat-icon>
+    <p>{{ error }}</p>
+  </mat-card>
+
+  <!-- Repository Selection -->
+  <div *ngIf="!loading && !error" class="content">
+    <mat-card class="repository-selection">
+      <h2>Select Repository</h2>
+      <div class="repository-list">
+        <button
+          *ngFor="let repo of repositories"
+          mat-raised-button
+          [class.selected]="selectedRepository?.id === repo.id"
+          (click)="selectRepository(repo)"
+          class="repo-button"
+        >
+          <mat-icon>folder</mat-icon>
+          <span>{{ repo.fullName }}</span>
+        </button>
+      </div>
+    </mat-card>
+
+    <!-- Selected Repository Actions -->
+    <mat-card *ngIf="selectedRepository" class="actions-card">
+      <div class="selected-repo-info">
+        <div>
+          <h3>{{ selectedRepository.fullName }}</h3>
+          <p *ngIf="selectedRepository.language">
+            <mat-icon>code</mat-icon>
+            {{ selectedRepository.language }}
+          </p>
+        </div>
+        <button
+          mat-raised-button
+          color="primary"
+          (click)="generateDocumentation()"
+          [disabled]="generating || hasDocumentationInProgress"
+          [title]="hasDocumentationInProgress ? 'Documentation generation is already in progress' : ''"
+        >
+          <mat-spinner *ngIf="generating" diameter="20" class="inline-spinner"></mat-spinner>
+          <mat-icon *ngIf="!generating">auto_awesome</mat-icon>
+          <span>{{ generating ? 'Generating...' : hasDocumentationInProgress ? 'Generation in Progress' : 'Generate Documentation' }}</span>
+        </button>
+      </div>
+    </mat-card>
+
+    <!-- Previous Documentations -->
+    <mat-card *ngIf="selectedRepository && documentations.length > 0" class="documentations-card">
+      <h2>Previous Documentations</h2>
+      <div class="documentations-list">
+        <mat-card *ngFor="let doc of documentations" class="doc-item">
+          <div class="doc-header">
+            <div>
+              <h3>
+                <mat-icon>description</mat-icon>
+                {{ doc.fileName || 'Documentation' }}
+              </h3>
+              <p class="doc-meta">
+                <span>
+                  <mat-icon>calendar_today</mat-icon>
+                  {{ doc.createdAt | date: 'short' }}
+                </span>
+                <span *ngIf="doc.fileSize">
+                  <mat-icon>storage</mat-icon>
+                  {{ formatFileSize(doc.fileSize) }}
+                </span>
+                <span *ngIf="doc.totalFiles">
+                  <mat-icon>insert_drive_file</mat-icon>
+                  {{ doc.totalFiles }} files
+                </span>
+              </p>
+            </div>
+            <mat-chip [color]="getStatusColor(doc.status)">
+              {{ doc.status }}
+            </mat-chip>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="doc-actions">
+            <button
+              mat-button
+              color="primary"
+              (click)="downloadDocumentation(doc)"
+              [disabled]="doc.status !== 'completed'"
+            >
+              <mat-icon>download</mat-icon>
+              Download
+            </button>
+            <span *ngIf="doc.status === 'processing'" class="processing-indicator">
+              <mat-spinner diameter="16"></mat-spinner>
+              <span>Processing...</span>
+            </span>
+            <span *ngIf="doc.status === 'failed'" class="error-message">
+              <mat-icon>error</mat-icon>
+              {{ doc.errorMessage || 'Generation failed' }}
+            </span>
+          </div>
+        </mat-card>
+      </div>
+    </mat-card>
+
+    <!-- Empty State -->
+    <mat-card *ngIf="selectedRepository && documentations.length === 0" class="empty-state">
+      <mat-icon>description</mat-icon>
+      <p>No documentations generated yet</p>
+      <p class="hint">Click "Generate Documentation" to create your first documentation</p>
+    </mat-card>
+  </div>
+</div>

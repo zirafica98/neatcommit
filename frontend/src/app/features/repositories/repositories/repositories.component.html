@@ -1,0 +1,100 @@
+<div class="repositories-container">
+  <div class="repositories-header fade-in">
+    <div>
+      <h1>Repositories</h1>
+      <p class="subtitle">
+        {{ showAllRepos ? 'All repositories from GitHub (where App is installed)' : 'Repositories in database' }}
+      </p>
+    </div>
+    <button mat-raised-button color="primary" (click)="toggleView()">
+      <mat-icon>{{ showAllRepos ? 'list' : 'cloud_download' }}</mat-icon>
+      {{ showAllRepos ? 'Show Database Repos' : 'Show All GitHub Repos' }}
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading repositories...</p>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="loadRepositories()">
+      Retry
+    </button>
+  </div>
+
+  <div *ngIf="!loading && !error" class="repositories-content">
+    <div *ngIf="repositories.length === 0" class="empty-state">
+      <mat-icon>folder</mat-icon>
+      <h3>No repositories found</h3>
+      <p>Repositories will be automatically added when you open a Pull Request in a repository where the GitHub App is installed.</p>
+      <a mat-raised-button color="primary" href="https://github.com/apps/neatcommit" target="_blank">
+        <mat-icon>add</mat-icon>
+        Install GitHub App
+      </a>
+    </div>
+
+    <div *ngIf="repositories.length > 0" class="repositories-grid">
+      <mat-card *ngFor="let repo of repositories" class="repo-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>folder</mat-icon>
+            {{ repo.fullName }}
+          </mat-card-title>
+          <mat-card-subtitle>
+            <span *ngIf="repo.private" class="private-badge">
+              <mat-icon>lock</mat-icon>
+              Private
+            </span>
+            <span *ngIf="!repo.private" class="public-badge">
+              <mat-icon>public</mat-icon>
+              Public
+            </span>
+          </mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <div class="repo-info">
+            <div class="repo-meta">
+              <span *ngIf="repo.language" class="language-chip" [style.background-color]="getLanguageColor(repo.language) + '20'">
+                <span class="language-dot" [style.background-color]="getLanguageColor(repo.language)"></span>
+                {{ repo.language }}
+              </span>
+              <span class="branch-info">
+                <mat-icon>code_branch</mat-icon>
+                {{ repo.defaultBranch }}
+              </span>
+            </div>
+          </div>
+        </mat-card-content>
+
+        <mat-card-actions>
+          <div class="toggle-container">
+            <span class="toggle-label">Analysis</span>
+            <mat-slide-toggle
+              *ngIf="repo.id && repo.id !== repo.githubRepoId.toString()"
+              [checked]="repo.enabled"
+              (change)="toggleRepository(repo)"
+              color="primary">
+            </mat-slide-toggle>
+            <button
+              *ngIf="!repo.id || repo.id === repo.githubRepoId.toString()"
+              mat-raised-button
+              color="primary"
+              (click)="addRepositoryToDatabase(repo)"
+              class="add-repo-button">
+              <mat-icon>add</mat-icon>
+              Add to Database
+            </button>
+          </div>
+          <a mat-button color="primary" [attr.href]="'https://github.com/' + repo.fullName" target="_blank">
+            <mat-icon>open_in_new</mat-icon>
+            View on GitHub
+          </a>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  </div>
+</div>

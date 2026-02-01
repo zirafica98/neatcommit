@@ -1,0 +1,145 @@
+<div class="review-detail-container">
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading review...</p>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error }}</p>
+    <button mat-raised-button color="primary" [routerLink]="['/reviews']">
+      Back to Reviews
+    </button>
+  </div>
+
+  <div *ngIf="!loading && !error && review" class="review-detail-content">
+    <div class="review-header-section">
+      <button mat-icon-button [routerLink]="['/reviews']">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="header-info">
+        <h1>{{ review.githubPrTitle }}</h1>
+        <div class="header-meta">
+          <span>{{ review.repository?.fullName || 'Unknown' }}</span>
+          <span class="separator">•</span>
+          <span>PR #{{ review.githubPrNumber }}</span>
+          <span class="separator">•</span>
+          <span>{{ review.createdAt | date: 'medium' }}</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="score-badge" [style.color]="getScoreColor(review.securityScore)">
+          {{ review.securityScore }}/100
+        </span>
+        <a mat-raised-button color="primary" [attr.href]="review.githubPrUrl" target="_blank">
+          <mat-icon>open_in_new</mat-icon>
+          View PR
+        </a>
+      </div>
+    </div>
+
+    <div class="review-stats-section">
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-value">{{ review.totalIssues }}</div>
+          <div class="stat-label">Total Issues</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-value" style="color: #f44336;">{{ review.criticalIssues }}</div>
+          <div class="stat-label">Critical</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-value" style="color: #ff9800;">{{ review.highIssues }}</div>
+          <div class="stat-label">High</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-value" style="color: #ffc107;">{{ review.mediumIssues }}</div>
+          <div class="stat-label">Medium</div>
+        </mat-card-content>
+      </mat-card>
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-value" style="color: #4caf50;">{{ review.lowIssues }}</div>
+          <div class="stat-label">Low</div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <mat-card class="issues-card">
+      <mat-card-header>
+        <mat-card-title>Issues</mat-card-title>
+        <div class="filter-buttons">
+          <button
+            mat-button
+            [class.active]="selectedSeverity === 'all'"
+            (click)="selectedSeverity = 'all'">
+            All ({{ review.totalIssues }})
+          </button>
+          <button
+            mat-button
+            [class.active]="selectedSeverity === 'CRITICAL'"
+            (click)="selectedSeverity = 'CRITICAL'">
+            Critical ({{ review.criticalIssues }})
+          </button>
+          <button
+            mat-button
+            [class.active]="selectedSeverity === 'HIGH'"
+            (click)="selectedSeverity = 'HIGH'">
+            High ({{ review.highIssues }})
+          </button>
+          <button
+            mat-button
+            [class.active]="selectedSeverity === 'MEDIUM'"
+            (click)="selectedSeverity = 'MEDIUM'">
+            Medium ({{ review.mediumIssues }})
+          </button>
+          <button
+            mat-button
+            [class.active]="selectedSeverity === 'LOW'"
+            (click)="selectedSeverity = 'LOW'">
+            Low ({{ review.lowIssues }})
+          </button>
+        </div>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngIf="getFilteredIssues().length === 0" class="empty-state">
+          <mat-icon>check_circle</mat-icon>
+          <p>No issues found</p>
+        </div>
+        <mat-expansion-panel *ngFor="let issue of getFilteredIssues()" class="issue-panel">
+          <mat-expansion-panel-header>
+            <mat-panel-title>
+              <mat-chip [style.background-color]="getSeverityColor(issue.severity) + '20'" [style.color]="getSeverityColor(issue.severity)">
+                {{ issue.severity }}
+              </mat-chip>
+              <span class="issue-title">{{ issue.title }}</span>
+            </mat-panel-title>
+            <mat-panel-description>
+              <span class="issue-location">{{ issue.filePath }}:{{ issue.line }}</span>
+            </mat-panel-description>
+          </mat-expansion-panel-header>
+          <div class="issue-content">
+            <p class="issue-description">{{ issue.description }}</p>
+            <div *ngIf="issue.codeSnippet" class="code-snippet">
+              <pre><code>{{ issue.codeSnippet }}</code></pre>
+            </div>
+            <div *ngIf="issue.suggestedFix" class="suggested-fix">
+              <h4>Suggested Fix:</h4>
+              <p>{{ issue.suggestedFix }}</p>
+            </div>
+            <div *ngIf="issue.cweId || issue.owaspCategory" class="issue-meta">
+              <span *ngIf="issue.cweId" class="meta-tag">CWE: {{ issue.cweId }}</span>
+              <span *ngIf="issue.owaspCategory" class="meta-tag">{{ issue.owaspCategory }}</span>
+            </div>
+          </div>
+        </mat-expansion-panel>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

@@ -1,0 +1,176 @@
+<div class="dashboard-container">
+  <div class="dashboard-header fade-in">
+    <div>
+      <h1>Dashboard</h1>
+      <p class="subtitle">Overview of your code reviews and security analysis</p>
+    </div>
+    <div *ngIf="hasActivelyAnalyzing" class="pending-indicator">
+      <mat-icon>sync</mat-icon>
+      <span>Analyzing reviews...</span>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading dashboard...</p>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error }}</p>
+    <button mat-raised-button color="primary" (click)="loadDashboardStats()">
+      Retry
+    </button>
+  </div>
+
+  <div *ngIf="!loading && !error && stats" class="dashboard-content">
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon" [style.background-color]="getScoreColor(stats.averageScore)">
+            <mat-icon>security</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>Security Score</h3>
+            <p class="stat-value" [style.color]="getScoreColor(stats.averageScore)">
+              {{ stats.averageScore }}/100
+            </p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon" style="background-color: #2196f3;">
+            <mat-icon>rate_review</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>Total Reviews</h3>
+            <p class="stat-value">{{ stats.totalReviews }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon" style="background-color: #f44336;">
+            <mat-icon>bug_report</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>Total Issues</h3>
+            <p class="stat-value">{{ stats.totalIssues }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-icon" style="background-color: #ff9800;">
+            <mat-icon>warning</mat-icon>
+          </div>
+          <div class="stat-info">
+            <h3>Critical Issues</h3>
+            <p class="stat-value">{{ stats.criticalIssues }}</p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Issue Breakdown -->
+    <mat-card class="issues-card">
+      <mat-card-header>
+        <mat-card-title>Issue Breakdown</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="issues-grid">
+          <div class="issue-item">
+            <div class="issue-badge" style="background-color: #f44336;">
+              <mat-icon>error</mat-icon>
+            </div>
+            <div class="issue-info">
+              <p class="issue-label">Critical</p>
+              <p class="issue-count">{{ stats.criticalIssues }}</p>
+            </div>
+          </div>
+          <div class="issue-item">
+            <div class="issue-badge" style="background-color: #ff9800;">
+              <mat-icon>warning</mat-icon>
+            </div>
+            <div class="issue-info">
+              <p class="issue-label">High</p>
+              <p class="issue-count">{{ stats.highIssues }}</p>
+            </div>
+          </div>
+          <div class="issue-item">
+            <div class="issue-badge" style="background-color: #ffc107;">
+              <mat-icon>info</mat-icon>
+            </div>
+            <div class="issue-info">
+              <p class="issue-label">Medium</p>
+              <p class="issue-count">{{ stats.mediumIssues }}</p>
+            </div>
+          </div>
+          <div class="issue-item">
+            <div class="issue-badge" style="background-color: #4caf50;">
+              <mat-icon>check_circle</mat-icon>
+            </div>
+            <div class="issue-info">
+              <p class="issue-label">Low</p>
+              <p class="issue-count">{{ stats.lowIssues }}</p>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Recent Reviews -->
+    <mat-card class="reviews-card">
+      <mat-card-header>
+        <mat-card-title>Recent Reviews</mat-card-title>
+        <button mat-button routerLink="/reviews">View All</button>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngIf="stats.recentReviews.length === 0" class="empty-state">
+          <mat-icon>rate_review</mat-icon>
+          <p>No reviews yet</p>
+        </div>
+        <div *ngFor="let review of stats.recentReviews" 
+             class="review-item" 
+             [class.analyzing]="isAnalyzing(review.id)"
+             [routerLink]="['/reviews', review.id]">
+          <div class="review-header">
+            <div class="review-title-section">
+              <h4>{{ review.githubPrTitle }}</h4>
+              <div *ngIf="isAnalyzing(review.id)" class="analyzing-badge">
+                <mat-spinner diameter="16"></mat-spinner>
+                <span>Analyzing...</span>
+              </div>
+            </div>
+            <span *ngIf="!isAnalyzing(review.id)" class="review-score" [style.color]="getScoreColor(review.securityScore)">
+              {{ review.securityScore }}/100
+            </span>
+            <span *ngIf="isAnalyzing(review.id)" class="review-score analyzing-score">
+              <mat-spinner diameter="20"></mat-spinner>
+            </span>
+          </div>
+          <div class="review-meta">
+            <span class="review-repo">{{ review.repository?.fullName || 'Unknown' }}</span>
+            <span class="review-date">{{ review.createdAt | date: 'short' }}</span>
+          </div>
+          <div class="review-issues">
+            <span *ngIf="review.criticalIssues > 0" class="issue-tag critical">
+              {{ review.criticalIssues }} Critical
+            </span>
+            <span *ngIf="review.highIssues > 0" class="issue-tag high">
+              {{ review.highIssues }} High
+            </span>
+            <span *ngIf="review.totalIssues === 0" class="issue-tag success">
+              No Issues
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

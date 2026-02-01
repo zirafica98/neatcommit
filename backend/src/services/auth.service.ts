@@ -1,0 +1,158 @@
+/**
+ * Auth Service
+ * 
+ * Upravlja autentifikacijom i GitHub OAuth flow-om
+ */
+
+import { Octokit } from '@octokit/rest';
+import jwt from 'jsonwebtoken';
+import env from '../config/env';
+import prisma from '../config/database';
+import { logger } from '../utils/logger';
+import { User } from '@prisma/client';
+
+export interface TokenPayload {
+  userId: string;
+  githubId: number;
+  username: string;
+}
+
+/**
+ * Generiše JWT access token
+ */
+export function generateAccessToken(user: User): string {
+  const payload: TokenPayload = {
+    userId: user.id,
+    githubId: user.githubId,
+    username: user.username,
+  };
+
+  return jwt.sign(payload, env.JWT_SECRET, {
+    expiresIn: env.JWT_EXPIRES_IN,
+  } as jwt.SignOptions);
+}
+
+/**
+ * Generiše JWT refresh token
+ */
+export function generateRefreshToken(user: User): string {
+  const payload: TokenPayload = {
+    userId: user.id,
+    githubId: user.githubId,
+    username: user.username,
+  };
+
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN,
+  } as jwt.SignOptions);
+}
+
+/**
+ * Verifikuje JWT access token
+ */
+export function verifyAccessToken(token: string): TokenPayload | null {
+  try {
+    return jwt.verify(token, env.JWT_SECRET) as TokenPayload;
+  } catch (error) {
+    logger.warn('Invalid access token', { error });
+    return null;
+  }
+}
+
+/**
+ * Verifikuje JWT refresh token
+ */
+export function verifyRefreshToken(token: string): TokenPayload | null {
+  try {
+    return jwt.verify(token, env.JWT_REFRESH_SECRET) as TokenPayload;
+  } catch (error) {
+    logger.warn('Invalid refresh token', { error });
+    return null;
+  }
+}
+
+/**
+ * Dohvata GitHub user informacije koristeći access token
+ */
+export async function getGitHubUser(accessToken: string): Promise<any> {
+  const octokit = new Octokit({
+    auth: accessToken,
+  });
+
+  const { data } = await octokit.users.getAuthenticated();
+  return data;
+}
+
+/**
+ * Razmenjuje GitHub OAuth code za access token
+ */
+export async function exchangeCodeForToken(code: string): Promise<string> {
+  const response = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      client_id: env.GITHUB_CLIENT_ID,
+      client_secret: env.GITHUB_CLIENT_SECRET,
+      code,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to exchange code for token');
+  }
+
+  const data = (await response.json()) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (data.error) {
+    throw new Error(data.error_description || data.error);
+  }
+
+  if (!data.access_token) {
+    throw new Error('No access token in response');
+  }
+
+  return data.access_token;
+}
+
+/**
+ * Kreira ili ažurira user u bazi na osnovu GitHub podataka
+ */
+export async function findOrCreateUser(githubUser: any): Promise<User> {
+  // Pronađi postojećeg user-a
+  let user = await prisma.user.findUnique({
+    where: { githubId: githubUser.id },
+  });
+
+  if (user) {
+    // Ažuriraj user informacije
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        username: githubUser.login,
+        email: githubUser.email || null,
+        avatarUrl: githubUser.avatar_url || null,
+        name: githubUser.name || null,
+      },
+    });
+  } else {
+    // Kreiraj novog user-a
+    user = await prisma.user.create({
+      data: {
+        githubId: githubUser.id,
+        username: githubUser.login,
+        email: githubUser.email || null,
+        avatarUrl: githubUser.avatar_url || null,
+        name: githubUser.name || null,
+      },
+    });
+  }
+
+  return user;
+}

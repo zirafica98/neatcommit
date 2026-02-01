@@ -7,6 +7,7 @@ import prisma from './config/database';
 import { testRedisConnection } from './config/redis';
 import { analysisQueue } from './config/queue';
 import './workers/analysis.worker'; // Start worker
+import './workers/documentation.worker'; // Start documentation worker
 
 const app: Express = express();
 
@@ -143,12 +144,7 @@ app.get('/api/reviews', async (_req: Request, res: Response) => {
             installationId: true,
           },
         },
-        repository: {
-          select: {
-            name: true,
-            fullName: true,
-          },
-        },
+        repository: true,
         _count: {
           select: {
             issues: true,
@@ -161,18 +157,34 @@ app.get('/api/reviews', async (_req: Request, res: Response) => {
       count: reviews.length,
       reviews: reviews.map((r) => ({
         id: r.id,
-        prNumber: r.githubPrNumber,
-        prTitle: r.githubPrTitle,
-        prUrl: r.githubPrUrl,
+        githubPrNumber: r.githubPrNumber,
+        githubPrId: r.githubPrId,
+        githubPrUrl: r.githubPrUrl,
+        githubPrTitle: r.githubPrTitle,
+        githubPrState: r.githubPrState,
+        githubSha: r.githubSha,
         status: r.status,
-        score: r.securityScore,
+        securityScore: r.securityScore,
         totalIssues: r.totalIssues,
         criticalIssues: r.criticalIssues,
         highIssues: r.highIssues,
-        repository: r.repository.fullName,
-        createdAt: r.createdAt,
-        completedAt: r.completedAt,
-        issueCount: r._count.issues,
+        mediumIssues: r.mediumIssues,
+        lowIssues: r.lowIssues,
+        createdAt: r.createdAt.toISOString(),
+        completedAt: r.completedAt?.toISOString(),
+        repository: r.repository ? {
+          id: r.repository.id,
+          githubRepoId: r.repository.githubRepoId,
+          name: r.repository.name,
+          fullName: r.repository.fullName,
+          owner: r.repository.owner,
+          private: r.repository.private,
+          defaultBranch: r.repository.defaultBranch,
+          language: r.repository.language,
+          enabled: r.repository.enabled,
+          createdAt: r.repository.createdAt.toISOString(),
+          updatedAt: r.repository.updatedAt.toISOString(),
+        } : null,
       })),
     });
   } catch (error) {
@@ -202,7 +214,52 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Review not found' });
     }
 
-    return res.json(review);
+    return res.json({
+      id: review.id,
+      githubPrNumber: review.githubPrNumber,
+      githubPrId: review.githubPrId,
+      githubPrUrl: review.githubPrUrl,
+      githubPrTitle: review.githubPrTitle,
+      githubPrState: review.githubPrState,
+      githubSha: review.githubSha,
+      status: review.status,
+      securityScore: review.securityScore,
+      totalIssues: review.totalIssues,
+      criticalIssues: review.criticalIssues,
+      highIssues: review.highIssues,
+      mediumIssues: review.mediumIssues,
+      lowIssues: review.lowIssues,
+      createdAt: review.createdAt.toISOString(),
+      completedAt: review.completedAt?.toISOString(),
+      repository: review.repository ? {
+        id: review.repository.id,
+        githubRepoId: review.repository.githubRepoId,
+        name: review.repository.name,
+        fullName: review.repository.fullName,
+        owner: review.repository.owner,
+        private: review.repository.private,
+        defaultBranch: review.repository.defaultBranch,
+        language: review.repository.language,
+        enabled: review.repository.enabled,
+        createdAt: review.repository.createdAt.toISOString(),
+        updatedAt: review.repository.updatedAt.toISOString(),
+      } : null,
+      issues: review.issues.map((i) => ({
+        id: i.id,
+        filePath: i.filePath,
+        line: i.line,
+        column: i.column,
+        severity: i.severity,
+        category: i.category,
+        title: i.title,
+        description: i.description,
+        codeSnippet: i.codeSnippet,
+        suggestedFix: i.suggestedFix,
+        cweId: i.cweId,
+        owaspCategory: i.owaspCategory,
+        createdAt: i.createdAt.toISOString(),
+      })),
+    });
   } catch (error) {
     logger.error('Failed to fetch review:', error);
     return res.status(500).json({ error: 'Failed to fetch review' });
@@ -253,10 +310,488 @@ app.get('/api/issues', async (req: Request, res: Response) => {
   }
 });
 
-// Other routes will be added here
-// app.use('/api/auth', authRoutes);
-// app.use('/api/repositories', repositoryRoutes);
-// app.use('/api/dashboard', dashboardRoutes);
+// Dashboard stats endpoint
+app.get('/api/dashboard/stats', async (_req: Request, res: Response) => {
+  try {
+    // Get total reviews count
+    const totalReviews = await prisma.review.count();
+
+    // Get total issues count
+    const totalIssues = await prisma.issue.count();
+
+    // Get issues by severity
+    const criticalIssues = await prisma.issue.count({
+      where: { severity: 'CRITICAL' },
+    });
+    const highIssues = await prisma.issue.count({
+      where: { severity: 'HIGH' },
+    });
+    const mediumIssues = await prisma.issue.count({
+      where: { severity: 'MEDIUM' },
+    });
+    const lowIssues = await prisma.issue.count({
+      where: { severity: 'LOW' },
+    });
+
+    // Calculate average security score
+    const reviewsWithScore = await prisma.review.findMany({
+      where: {
+        status: 'completed',
+        securityScore: { not: null },
+      },
+      select: {
+        securityScore: true,
+      },
+    });
+
+    const averageScore = reviewsWithScore.length > 0
+      ? Math.round(
+          reviewsWithScore.reduce((sum, r) => sum + (r.securityScore || 0), 0) /
+          reviewsWithScore.length
+        )
+      : 0;
+
+    // Get recent reviews (last 5)
+    const recentReviews = await prisma.review.findMany({
+      take: 5,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        repository: {
+          select: {
+            id: true,
+            githubRepoId: true,
+            name: true,
+            fullName: true,
+            owner: true,
+            private: true,
+            defaultBranch: true,
+            language: true,
+            enabled: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+      },
+    });
+
+    return res.json({
+      totalReviews,
+      totalIssues,
+      criticalIssues,
+      highIssues,
+      mediumIssues,
+      lowIssues,
+      averageScore,
+      recentReviews: recentReviews.map((r) => ({
+        id: r.id,
+        githubPrNumber: r.githubPrNumber,
+        githubPrId: r.githubPrId,
+        githubPrUrl: r.githubPrUrl,
+        githubPrTitle: r.githubPrTitle,
+        githubPrState: r.githubPrState,
+        githubSha: r.githubSha,
+        status: r.status,
+        securityScore: r.securityScore,
+        totalIssues: r.totalIssues,
+        criticalIssues: r.criticalIssues,
+        highIssues: r.highIssues,
+        mediumIssues: r.mediumIssues,
+        lowIssues: r.lowIssues,
+        createdAt: r.createdAt.toISOString(),
+        completedAt: r.completedAt?.toISOString(),
+        repository: r.repository ? {
+          id: r.repository.id,
+          githubRepoId: r.repository.githubRepoId,
+          name: r.repository.name,
+          fullName: r.repository.fullName,
+          owner: r.repository.owner,
+          private: r.repository.private,
+          defaultBranch: r.repository.defaultBranch,
+          language: r.repository.language,
+          enabled: r.repository.enabled,
+          createdAt: r.repository.createdAt.toISOString(),
+          updatedAt: r.repository.updatedAt.toISOString(),
+        } : null,
+      })),
+    });
+  } catch (error) {
+    logger.error('Failed to fetch dashboard stats:', error);
+    return res.status(500).json({ error: 'Failed to fetch dashboard stats' });
+  }
+});
+
+// Repositories endpoints
+app.get('/api/repositories', async (req: Request, res: Response) => {
+  try {
+    // Proveri autentifikaciju
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { verifyAccessToken } = await import('./services/auth.service');
+      const payload = verifyAccessToken(token);
+      userId = payload?.userId || null;
+    }
+
+    // Ako je korisnik autentifikovan, vrati samo njegove repozitorijume
+    if (userId) {
+      // Pokušaj da povežeš installation sa korisnikom ako nije povezan
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (user) {
+        // Pronađi installation-e koje nisu povezane sa korisnikom ali imaju isti accountId
+        await prisma.installation.updateMany({
+          where: {
+            accountId: user.githubId,
+            userId: null, // Nisu povezani
+          },
+          data: {
+            userId: user.id,
+          },
+        });
+      }
+
+      const installations = await prisma.installation.findMany({
+        where: { userId },
+        include: {
+          repositories: true,
+        },
+      });
+
+      const repositories = installations.flatMap((inst) => inst.repositories);
+
+      return res.json({
+        count: repositories.length,
+        repositories: repositories.map((r) => ({
+          id: r.id,
+          githubRepoId: r.githubRepoId,
+          name: r.name,
+          fullName: r.fullName,
+          owner: r.owner,
+          private: r.private,
+          defaultBranch: r.defaultBranch,
+          language: r.language,
+          enabled: r.enabled,
+          createdAt: r.createdAt.toISOString(),
+          updatedAt: r.updatedAt.toISOString(),
+        })),
+      });
+    }
+
+    // Ako nije autentifikovan, vrati sve (za backward compatibility)
+    const repositories = await prisma.repository.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json({
+      count: repositories.length,
+      repositories: repositories.map((r) => ({
+        id: r.id,
+        githubRepoId: r.githubRepoId,
+        name: r.name,
+        fullName: r.fullName,
+        owner: r.owner,
+        private: r.private,
+        defaultBranch: r.defaultBranch,
+        language: r.language,
+        enabled: r.enabled,
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    logger.error('Failed to fetch repositories:', error);
+    return res.status(500).json({ error: 'Failed to fetch repositories' });
+  }
+});
+
+// Endpoint za dobijanje SVIH repozitorijuma sa GitHub-a (ne samo onih u bazi)
+app.get('/api/repositories/all', async (req: Request, res: Response) => {
+  try {
+    // Proveri autentifikaciju
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const token = authHeader.substring(7);
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Dobij sve repozitorijume sa GitHub-a koristeći getUserRepositories
+    const { getUserRepositories } = await import('./services/user-repositories.service');
+    const githubRepos = await getUserRepositories(payload.userId);
+
+    // Mapiraj na format koji frontend očekuje
+    const repositories = githubRepos.map((repo) => ({
+      id: repo.connectedRepoId || repo.githubRepoId.toString(), // Koristi ID iz baze ako postoji, inače GitHub ID
+      githubRepoId: repo.githubRepoId,
+      name: repo.name,
+      fullName: repo.fullName,
+      owner: repo.owner,
+      private: repo.private,
+      defaultBranch: repo.defaultBranch || 'main',
+      language: repo.language || null,
+      enabled: repo.enabled || false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }));
+
+    // Proveri koje repozitorijume već imamo u bazi i označi ih kao enabled
+    const reposInDb = await prisma.repository.findMany({
+      where: {
+        githubRepoId: {
+          in: repositories.map((r) => r.githubRepoId),
+        },
+      },
+    });
+
+    const reposInDbMap = new Map(reposInDb.map((r) => [r.githubRepoId, r]));
+
+    // Ažuriraj enabled status za repozitorijume koji su u bazi
+    const repositoriesWithStatus = repositories.map((repo) => {
+      const dbRepo = reposInDbMap.get(repo.githubRepoId);
+      return {
+        ...repo,
+        id: dbRepo?.id || repo.id, // Koristi ID iz baze ako postoji
+        enabled: dbRepo?.enabled || false,
+      };
+    });
+
+    return res.json({
+      count: repositoriesWithStatus.length,
+      repositories: repositoriesWithStatus,
+    });
+  } catch (error) {
+    logger.error('Failed to fetch all repositories from GitHub:', error);
+    return res.status(500).json({ error: 'Failed to fetch repositories from GitHub' });
+  }
+});
+
+app.get('/api/repositories/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const repository = await prisma.repository.findUnique({
+      where: { id },
+    });
+
+    if (!repository) {
+      return res.status(404).json({ error: 'Repository not found' });
+    }
+
+    return res.json({
+      id: repository.id,
+      githubRepoId: repository.githubRepoId,
+      name: repository.name,
+      fullName: repository.fullName,
+      owner: repository.owner,
+      private: repository.private,
+      defaultBranch: repository.defaultBranch,
+      language: repository.language,
+      enabled: repository.enabled,
+      createdAt: repository.createdAt.toISOString(),
+      updatedAt: repository.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    logger.error('Failed to fetch repository:', error);
+    return res.status(500).json({ error: 'Failed to fetch repository' });
+  }
+});
+
+app.post('/api/repositories/:id/enable', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const repository = await prisma.repository.update({
+      where: { id },
+      data: { enabled: true },
+    });
+
+    return res.json({
+      id: repository.id,
+      githubRepoId: repository.githubRepoId,
+      name: repository.name,
+      fullName: repository.fullName,
+      owner: repository.owner,
+      private: repository.private,
+      defaultBranch: repository.defaultBranch,
+      language: repository.language,
+      enabled: repository.enabled,
+      createdAt: repository.createdAt.toISOString(),
+      updatedAt: repository.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    logger.error('Failed to enable repository:', error);
+    return res.status(500).json({ error: 'Failed to enable repository' });
+  }
+});
+
+// Endpoint za dodavanje repozitorijuma u bazu bez čekanja na PR
+app.post('/api/repositories/add', async (req: Request, res: Response) => {
+  try {
+    // Proveri autentifikaciju
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const token = authHeader.substring(7);
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(token);
+
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const { githubRepoId } = req.body;
+
+    if (!githubRepoId) {
+      return res.status(400).json({ error: 'Missing githubRepoId' });
+    }
+
+    // Dobij korisnika
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Pronađi installation za korisnika
+    const installation = await prisma.installation.findFirst({
+      where: {
+        userId: payload.userId,
+        accountId: user.githubId,
+      },
+    });
+
+    if (!installation) {
+      return res.status(404).json({ error: 'No GitHub App installation found for this user' });
+    }
+
+    // Proveri da li repozitorijum već postoji u bazi
+    const existingRepo = await prisma.repository.findUnique({
+      where: { githubRepoId: parseInt(githubRepoId.toString(), 10) },
+    });
+
+    if (existingRepo) {
+      return res.json({
+        success: true,
+        repository: {
+          id: existingRepo.id,
+          githubRepoId: existingRepo.githubRepoId,
+          name: existingRepo.name,
+          fullName: existingRepo.fullName,
+          owner: existingRepo.owner,
+          private: existingRepo.private,
+          defaultBranch: existingRepo.defaultBranch,
+          language: existingRepo.language,
+          enabled: existingRepo.enabled,
+          createdAt: existingRepo.createdAt.toISOString(),
+          updatedAt: existingRepo.updatedAt.toISOString(),
+        },
+        message: 'Repository already exists in database',
+      });
+    }
+
+    // Dobij informacije o repozitorijumu sa GitHub-a
+    const { getUserRepositories } = await import('./services/user-repositories.service');
+    const githubRepos = await getUserRepositories(payload.userId);
+    const githubRepo = githubRepos.find((r) => r.githubRepoId === parseInt(githubRepoId.toString(), 10));
+
+    if (!githubRepo) {
+      return res.status(404).json({ error: 'Repository not found in your GitHub account or App is not installed for this repository' });
+    }
+
+    // Kreiraj repozitorijum u bazi
+    const repository = await prisma.repository.create({
+      data: {
+        installationId: installation.id,
+        githubRepoId: githubRepo.githubRepoId,
+        name: githubRepo.name,
+        fullName: githubRepo.fullName,
+        owner: githubRepo.owner,
+        private: githubRepo.private,
+        defaultBranch: githubRepo.defaultBranch,
+        language: githubRepo.language || null,
+        enabled: true, // Automatski omogući analizu
+      },
+    });
+
+    logger.info('Repository added to database', {
+      repositoryId: repository.id,
+      githubRepoId: repository.githubRepoId,
+      fullName: repository.fullName,
+    });
+
+    return res.json({
+      success: true,
+      repository: {
+        id: repository.id,
+        githubRepoId: repository.githubRepoId,
+        name: repository.name,
+        fullName: repository.fullName,
+        owner: repository.owner,
+        private: repository.private,
+        defaultBranch: repository.defaultBranch,
+        language: repository.language,
+        enabled: repository.enabled,
+        createdAt: repository.createdAt.toISOString(),
+        updatedAt: repository.updatedAt.toISOString(),
+      },
+      message: 'Repository added successfully',
+    });
+  } catch (error) {
+    logger.error('Failed to add repository:', error);
+    return res.status(500).json({
+      error: 'Failed to add repository',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.post('/api/repositories/:id/disable', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const repository = await prisma.repository.update({
+      where: { id },
+      data: { enabled: false },
+    });
+
+    return res.json({
+      id: repository.id,
+      githubRepoId: repository.githubRepoId,
+      name: repository.name,
+      fullName: repository.fullName,
+      owner: repository.owner,
+      private: repository.private,
+      defaultBranch: repository.defaultBranch,
+      language: repository.language,
+      enabled: repository.enabled,
+      createdAt: repository.createdAt.toISOString(),
+      updatedAt: repository.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    logger.error('Failed to disable repository:', error);
+    return res.status(500).json({ error: 'Failed to disable repository' });
+  }
+});
+
+
+// API routes
+import authRoutes from './api/routes/auth';
+app.use('/api/auth', authRoutes);
+
+import documentationRoutes from './api/routes/documentation';
+app.use('/api/documentation', documentationRoutes);
+
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
