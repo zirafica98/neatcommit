@@ -28,7 +28,7 @@
     <div class="stats-grid">
       <mat-card class="stat-card">
         <mat-card-content>
-          <div class="stat-icon" [style.background-color]="getScoreColor(stats.averageScore)">
+          <div class="stat-icon" [style.background]="getScoreGradient(stats.averageScore)">
             <mat-icon>security</mat-icon>
           </div>
           <div class="stat-info">
@@ -42,7 +42,7 @@
 
       <mat-card class="stat-card">
         <mat-card-content>
-          <div class="stat-icon" style="background-color: #2196f3;">
+          <div class="stat-icon stat-icon-blue">
             <mat-icon>rate_review</mat-icon>
           </div>
           <div class="stat-info">
@@ -54,7 +54,7 @@
 
       <mat-card class="stat-card">
         <mat-card-content>
-          <div class="stat-icon" style="background-color: #f44336;">
+          <div class="stat-icon stat-icon-red">
             <mat-icon>bug_report</mat-icon>
           </div>
           <div class="stat-info">
@@ -66,7 +66,7 @@
 
       <mat-card class="stat-card">
         <mat-card-content>
-          <div class="stat-icon" style="background-color: #ff9800;">
+          <div class="stat-icon stat-icon-orange">
             <mat-icon>warning</mat-icon>
           </div>
           <div class="stat-info">
@@ -85,7 +85,7 @@
       <mat-card-content>
         <div class="issues-grid">
           <div class="issue-item">
-            <div class="issue-badge" style="background-color: #f44336;">
+            <div class="issue-badge issue-badge-critical">
               <mat-icon>error</mat-icon>
             </div>
             <div class="issue-info">
@@ -94,7 +94,7 @@
             </div>
           </div>
           <div class="issue-item">
-            <div class="issue-badge" style="background-color: #ff9800;">
+            <div class="issue-badge issue-badge-high">
               <mat-icon>warning</mat-icon>
             </div>
             <div class="issue-info">
@@ -103,7 +103,7 @@
             </div>
           </div>
           <div class="issue-item">
-            <div class="issue-badge" style="background-color: #ffc107;">
+            <div class="issue-badge issue-badge-medium">
               <mat-icon>info</mat-icon>
             </div>
             <div class="issue-info">
@@ -112,7 +112,7 @@
             </div>
           </div>
           <div class="issue-item">
-            <div class="issue-badge" style="background-color: #4caf50;">
+            <div class="issue-badge issue-badge-low">
               <mat-icon>check_circle</mat-icon>
             </div>
             <div class="issue-info">

@@ -1,0 +1,98 @@
+/* Dark Theme Styles */
+
+.dark-theme {
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-gradient-alt: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --accent-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --success-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  --danger-gradient: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5e0;
+  --text-muted: #a0aec0;
+  --bg-white: rgba(30, 30, 30, 0.95);
+  --bg-glass: rgba(26, 32, 44, 0.95);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.6);
+  
+  background: #1a1a2e !important;
+  color: var(--text-primary);
+  
+  /* Darker background gradient */
+  &::before {
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(102, 126, 234, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(118, 75, 162, 0.15) 0%, transparent 50%);
+  }
+
+  .mat-mdc-card {
+    background: var(--bg-glass) !important;
+    color: var(--text-primary) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    
+    &:hover {
+      border-color: rgba(102, 126, 234, 0.4) !important;
+    }
+  }
+
+  .mat-mdc-sidenav {
+    background: rgba(26, 32, 44, 0.98) !important;
+    color: var(--text-primary) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .mat-mdc-toolbar {
+    background: var(--bg-glass) !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .mat-mdc-form-field {
+    .mat-mdc-text-field-wrapper {
+      background: var(--bg-glass) !important;
+      color: var(--text-primary) !important;
+    }
+    
+    .mat-mdc-form-field-label {
+      color: var(--text-secondary) !important;
+    }
+  }
+
+  .mat-mdc-button {
+    color: var(--text-primary) !important;
+    
+    &:hover {
+      background: rgba(102, 126, 234, 0.1) !important;
+    }
+  }
+
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar-track {
+    background: rgba(26, 32, 44, 0.5);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.4), rgba(118, 75, 162, 0.4));
+    border: 2px solid rgba(26, 32, 44, 0.5);
+    
+    &:hover {
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.6), rgba(118, 75, 162, 0.6));
+    }
+  }
+  
+  /* Text colors */
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary) !important;
+  }
+  
+  p, span {
+    color: var(--text-secondary);
+  }
+  
+  .subtitle {
+    color: var(--text-muted) !important;
+  }
+}

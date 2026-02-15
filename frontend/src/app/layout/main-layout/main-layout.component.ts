@@ -9,6 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../core/services/auth.service';
+import { ThemeService } from '../../core/services/theme.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -30,10 +31,21 @@ import { AuthService } from '../../core/services/auth.service';
 export class MainLayoutComponent {
   sidenavOpened = true;
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    public themeService: ThemeService
+  ) {}
 
   get currentUser$() {
     return this.authService.currentUser$;
+  }
+
+  get isDarkTheme$() {
+    return this.themeService.theme$;
+  }
+
+  get isDarkTheme(): boolean {
+    return this.themeService.getCurrentTheme() === 'dark';
   }
 
   logout(): void {
@@ -42,5 +54,9 @@ export class MainLayoutComponent {
 
   toggleSidenav(): void {
     this.sidenavOpened = !this.sidenavOpened;
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
   }
 }

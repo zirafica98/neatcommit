@@ -98,10 +98,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   getScoreColor(score: number): string {
-    if (score >= 80) return '#4caf50';
-    if (score >= 60) return '#ffc107';
-    if (score >= 40) return '#ff9800';
-    return '#f44336';
+    if (score >= 80) return '#43e97b'; // Success green
+    if (score >= 60) return '#fa709a'; // Warning pink
+    if (score >= 40) return '#ff9800'; // Orange
+    return '#ff6b6b'; // Danger red
+  }
+  
+  getScoreGradient(score: number): string {
+    if (score >= 80) return 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)';
+    if (score >= 60) return 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)';
+    if (score >= 40) return 'linear-gradient(135deg, #ff9800 0%, #fb8c00 100%)';
+    return 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)';
   }
 
   isAnalyzing(reviewId: string): boolean {

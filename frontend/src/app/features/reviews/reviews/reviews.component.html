@@ -6,7 +6,6 @@
     </div>
     <div class="filter-container">
       <mat-form-field appearance="outline">
-        <mat-label>Filter by Severity</mat-label>
         <mat-select [value]="filterSeverity" (selectionChange)="onFilterChange($event.value)">
           <mat-option value="all">All Issues</mat-option>
           <mat-option value="CRITICAL">Critical</mat-option>

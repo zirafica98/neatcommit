@@ -15,10 +15,9 @@
     margin: 0 0 8px 0;
     font-size: 36px;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: white !important;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.5);
+    letter-spacing: -0.5px;
     
     @media (max-width: 768px) {
       font-size: 28px;
@@ -26,10 +25,11 @@
   }
   
   .subtitle {
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.95) !important;
     margin: 0;
     font-size: 16px;
-    font-weight: 400;
+    font-weight: 500;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   }
   
   .filter-container {
@@ -38,6 +38,59 @@
     @media (max-width: 768px) {
       width: 100%;
       min-width: unset;
+    }
+    
+    ::ng-deep {
+      mat-form-field {
+        .mat-mdc-text-field-wrapper {
+          background: var(--bg-glass);
+          backdrop-filter: blur(10px);
+        }
+        
+        .mat-mdc-form-field-label {
+          color: white !important;
+          font-weight: 700 !important;
+          font-size: 15px !important;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+          opacity: 1 !important;
+        }
+        
+        .mat-mdc-form-field-label.mdc-floating-label--float-above {
+          color: white !important;
+          font-weight: 700 !important;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        
+        .mat-mdc-select-value {
+          color: #333 !important;
+          font-weight: 600 !important;
+        }
+        
+        .mat-mdc-select-arrow {
+          color: white !important;
+          opacity: 0.9 !important;
+        }
+        
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__notch,
+        .mdc-notched-outline__trailing {
+          border-color: rgba(255, 255, 255, 0.6) !important;
+          border-width: 1.5px !important;
+        }
+        
+        &:hover .mdc-notched-outline__leading,
+        &:hover .mdc-notched-outline__notch,
+        &:hover .mdc-notched-outline__trailing {
+          border-color: rgba(255, 255, 255, 0.9) !important;
+        }
+        
+        &.mat-focused .mdc-notched-outline__leading,
+        &.mat-focused .mdc-notched-outline__notch,
+        &.mat-focused .mdc-notched-outline__trailing {
+          border-color: white !important;
+          border-width: 2px !important;
+        }
+      }
     }
   }
 }
@@ -67,16 +120,28 @@
 }
 
 .review-card {
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--bg-glass) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--primary-gradient);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
   
   &.analyzing {
     border: 2px solid #ff9800;
-    background: rgba(255, 152, 0, 0.05) !important;
+    background: rgba(255, 152, 0, 0.08) !important;
     animation: pulse-border 2s infinite;
     
     &::before {
@@ -86,16 +151,30 @@
       left: 0;
       right: 0;
       height: 4px;
-      background: linear-gradient(90deg, #ff9800, #ffc107, #ff9800);
+      background: var(--warning-gradient);
       background-size: 200% 100%;
       animation: shimmer 2s infinite;
+      z-index: 1;
+    }
+    
+    &::after {
+      opacity: 0;
     }
   }
   
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15) !important;
-    border-color: #667eea;
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: var(--shadow-xl) !important;
+    border-color: var(--primary-color) !important;
+    
+    &::after {
+      opacity: 1;
+    }
+    
+    &.analyzing {
+      border-color: #ff9800;
+      box-shadow: 0 12px 32px rgba(255, 152, 0, 0.3) !important;
+    }
   }
   
   @keyframes pulse-border {

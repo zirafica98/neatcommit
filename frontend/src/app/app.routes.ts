@@ -36,6 +36,10 @@ export const routes: Routes = [
         path: 'documentation',
         loadChildren: () => import('./features/documentation/documentation.routes').then(m => m.documentationRoutes),
       },
+      {
+        path: 'search',
+        loadChildren: () => import('./features/search/search.routes').then(m => m.searchRoutes),
+      },
     ],
   },
   {

@@ -1,0 +1,92 @@
+<div class="search-container fade-in">
+  <div class="search-header">
+    <h1>Search</h1>
+    <p class="subtitle">Search across reviews, issues, and repositories</p>
+  </div>
+
+  <div class="search-input-container">
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search...</mat-label>
+      <input matInput [formControl]="searchControl" placeholder="Enter search query">
+      <mat-icon matPrefix>search</mat-icon>
+    </mat-form-field>
+  </div>
+
+  <mat-tab-group [(selectedIndex)]="selectedTabIndex" (selectedIndexChange)="onSearchTypeChange($event)">
+    <mat-tab label="All"></mat-tab>
+    <mat-tab label="Reviews"></mat-tab>
+    <mat-tab label="Issues"></mat-tab>
+    <mat-tab label="Repositories"></mat-tab>
+  </mat-tab-group>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Searching...</p>
+  </div>
+
+  <div *ngIf="!loading && results && results.total === 0" class="empty-state">
+    <mat-icon>search_off</mat-icon>
+    <h3>No results found</h3>
+    <p>Try a different search query</p>
+  </div>
+
+  <div *ngIf="!loading && results && results.total > 0" class="results-container">
+    <div *ngIf="(searchType === 'all' || searchType === 'reviews') && results.reviews.length > 0" class="results-section">
+      <h2>Reviews ({{ results.reviews.length }})</h2>
+      <div class="results-grid">
+        <mat-card *ngFor="let review of results.reviews" class="result-card" [routerLink]="['/reviews', review.id]">
+          <mat-card-header>
+            <mat-card-title>{{ review.prTitle }}</mat-card-title>
+            <mat-card-subtitle>{{ review.repository.fullName }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="review-stats">
+              <span class="stat">
+                <mat-icon>security</mat-icon>
+                Score: {{ review.securityScore || 'N/A' }}
+              </span>
+              <span class="stat">
+                <mat-icon>bug_report</mat-icon>
+                Issues: {{ review.totalIssues }}
+              </span>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <div *ngIf="(searchType === 'all' || searchType === 'issues') && results.issues.length > 0" class="results-section">
+      <h2>Issues ({{ results.issues.length }})</h2>
+      <div class="results-grid">
+        <mat-card *ngFor="let issue of results.issues" class="result-card">
+          <mat-card-header>
+            <mat-card-title>{{ issue.title }}</mat-card-title>
+            <mat-card-subtitle>
+              <mat-chip [class]="'severity-' + issue.severity.toLowerCase()">
+                {{ issue.severity }}
+              </mat-chip>
+              {{ issue.review.repository.fullName }} - {{ issue.filePath }}
+            </mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <p>{{ issue.description }}</p>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </div>
+
+    <div *ngIf="(searchType === 'all' || searchType === 'repositories') && results.repositories.length > 0" class="results-section">
+      <h2>Repositories ({{ results.repositories.length }})</h2>
+      <div class="results-grid">
+        <mat-card *ngFor="let repo of results.repositories" class="result-card" [routerLink]="['/repositories']">
+          <mat-card-header>
+            <mat-card-title>{{ repo.fullName }}</mat-card-title>
+            <mat-card-subtitle>
+              <mat-chip *ngIf="repo.language">{{ repo.language }}</mat-chip>
+            </mat-card-subtitle>
+          </mat-card-header>
+        </mat-card>
+      </div>
+    </div>
+  </div>
+</div>

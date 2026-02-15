@@ -38,6 +38,11 @@
       </button>
       <span class="spacer"></span>
       
+      <!-- Theme Toggle -->
+      <button mat-icon-button (click)="toggleTheme()" [title]="isDarkTheme ? 'Switch to light mode' : 'Switch to dark mode'">
+        <mat-icon>{{ isDarkTheme ? 'dark_mode' : 'light_mode' }}</mat-icon>
+      </button>
+      
       <div *ngIf="currentUser$ | async as user" class="user-menu">
         <button mat-icon-button [matMenuTriggerFor]="userMenu">
           <img [src]="user.avatarUrl || '/assets/default-avatar.png'" [alt]="user.username" class="avatar">

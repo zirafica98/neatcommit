@@ -5,10 +5,10 @@
 
 .sidenav {
   width: 320px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--bg-glass);
+  backdrop-filter: blur(20px);
+  box-shadow: 4px 0 30px rgba(0, 0, 0, 0.15);
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
   
   @media (max-width: 768px) {
     width: 280px;
@@ -17,12 +17,25 @@
 
 .sidenav-header {
   padding: 28px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--primary-gradient);
   color: white;
   display: flex;
   align-items: center;
   gap: 14px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
+    animation: shimmer 3s ease-in-out infinite;
+  }
 
   h2 {
     margin: 0;
@@ -32,6 +45,8 @@
     align-items: center;
     gap: 12px;
     letter-spacing: -0.5px;
+    position: relative;
+    z-index: 1;
     
     mat-icon {
       font-size: 32px;
@@ -54,12 +69,13 @@
     padding: 16px 24px;
     margin: 6px 16px;
     border-radius: 14px;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     color: #666;
     text-decoration: none;
     font-weight: 500;
     font-size: 16px;
     min-height: 56px;
+    position: relative;
     
     mat-icon {
       font-size: 32px;
@@ -69,32 +85,41 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: all 0.3s ease;
     }
     
     span {
       flex: 1;
       line-height: 1.4;
       font-size: 16px;
+      transition: all 0.3s ease;
     }
     
     &:hover {
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
-      transform: translateX(4px);
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+      color: var(--primary-color);
+      transform: translateX(6px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
       
       mat-icon {
-        color: #667eea;
+        color: var(--primary-color);
+        transform: scale(1.1);
       }
     }
     
     &.active {
-      background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-      color: #667eea;
+      background: var(--primary-gradient);
+      color: white;
       font-weight: 600;
-      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+      box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+      transform: translateX(4px);
       
       mat-icon {
-        color: #667eea;
+        color: white;
+      }
+      
+      span {
+        color: white;
       }
     }
   }
@@ -104,12 +129,21 @@ mat-toolbar {
   position: sticky;
   top: 0;
   z-index: 1000;
-  background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(10px);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 0 16px;
-  height: 64px;
+  background: var(--bg-glass) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0 20px;
+  height: 70px;
+  
+  button[mat-icon-button] {
+    transition: all 0.3s ease;
+    
+    &:hover {
+      background: rgba(102, 126, 234, 0.1);
+      transform: scale(1.1);
+    }
+  }
 }
 
 .spacer {
@@ -123,15 +157,17 @@ mat-toolbar {
 }
 
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  border: 2px solid white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-  transition: transform 0.2s ease;
+  border: 3px solid white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
   
   &:hover {
-    transform: scale(1.1);
+    transform: scale(1.15);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    border-color: var(--primary-color);
   }
 }
 
@@ -153,7 +189,7 @@ mat-toolbar {
   padding: 32px;
   max-width: 1600px;
   margin: 0 auto;
-  min-height: calc(100vh - 64px);
+  min-height: calc(100vh - 70px);
   
   @media (max-width: 768px) {
     padding: 16px;
@@ -169,5 +205,14 @@ mat-toolbar {
   
   .main-content {
     padding: 16px;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  100% {
+    transform: translate(50px, 50px) rotate(360deg);
   }
 }
