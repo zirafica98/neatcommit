@@ -7,6 +7,7 @@ import { analyzeFiles } from '../services/analysis.service';
 import { postAnalysisComments } from '../services/github-comment.service';
 import prisma from '../config/database';
 import { isLanguageSupported } from '../utils/language-detector';
+import { sendReviewCompletedNotification } from '../services/notification.service';
 
 logger.info('Creating analysis worker...');
 
@@ -165,7 +166,36 @@ export const analysisWorker = new Worker(
           score: Math.round(avgScore),
         });
 
-        // 6. Postavi komentare na GitHub PR
+        // 6. Pošalji email notifikaciju ako postoji korisnik
+        if (review.userId) {
+          try {
+            const user = await prisma.user.findUnique({
+              where: { id: review.userId },
+            });
+            const repository = await prisma.repository.findUnique({
+              where: { id: review.repositoryId },
+            });
+
+            if (user?.email && repository) {
+              await sendReviewCompletedNotification(user.email, {
+                repositoryName: repository.fullName,
+                prTitle: review.githubPrTitle,
+                prUrl: review.githubPrUrl,
+                securityScore: Math.round(avgScore),
+                totalIssues: allIssues.length,
+                criticalIssues: criticalCount,
+              });
+            }
+          } catch (notificationError) {
+            logger.error('Failed to send notification', {
+              reviewId: review.id,
+              error: notificationError,
+            });
+            // Ne prekidaj proces ako notifikacija ne uspe
+          }
+        }
+
+        // 7. Postavi komentare na GitHub PR
         try {
           const commentResult = await postAnalysisComments(
             installationId,

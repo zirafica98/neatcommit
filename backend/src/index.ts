@@ -9,7 +9,13 @@ import { analysisQueue } from './config/queue';
 import './workers/analysis.worker'; // Start worker
 import './workers/documentation.worker'; // Start documentation worker
 
+// Initialize Sentry (samo u production)
+import { initSentry } from './config/sentry';
+initSentry();
+
 const app: Express = express();
+
+// Sentry setup (samo u production) - middleware se dodaje kasnije u error handler sekciji
 
 // Middleware
 app.use(
@@ -31,13 +37,49 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
   next();
 });
 
-// Health check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    environment: env.NODE_ENV,
-  });
+// Rate limiting middleware
+import { apiLimiter, authLimiter, webhookLimiter } from './middleware/rate-limiter';
+
+// Apply general rate limiting to all API routes
+app.use('/api', apiLimiter);
+
+// Health check (bez rate limiting)
+app.get('/health', async (_req: Request, res: Response) => {
+  try {
+    // Proveri status svih servisa
+    const dbStatus = await prisma.$queryRaw`SELECT 1`.then(() => 'connected').catch(() => 'disconnected');
+    const redisStatus = await testRedisConnection().then(() => 'connected').catch(() => 'disconnected');
+    
+    const health = {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: env.NODE_ENV,
+      services: {
+        database: dbStatus,
+        redis: redisStatus,
+        queue: 'connected', // BullMQ se automatski povezuje
+      },
+      uptime: process.uptime(),
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        unit: 'MB',
+      },
+    };
+
+    // Ako bilo koji servis nije povezan, vrati 503
+    const allServicesOk = dbStatus === 'connected' && redisStatus === 'connected';
+    const statusCode = allServicesOk ? 200 : 503;
+    
+    res.status(statusCode).json(health);
+  } catch (error) {
+    logger.error('Health check failed:', error);
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed',
+    });
+  }
 });
 
 // Test queue endpoint (for development)
@@ -129,7 +171,7 @@ app.post('/test/analysis', async (req: Request, res: Response) => {
 
 // API routes
 import webhookRoutes from './api/routes/webhooks';
-app.use('/webhook', webhookRoutes);
+app.use('/webhook', webhookLimiter, webhookRoutes); // Rate limiting za webhook-ove
 
 // Database preview endpoints (for development)
 app.get('/api/reviews', async (_req: Request, res: Response) => {
@@ -785,13 +827,20 @@ app.post('/api/repositories/:id/disable', async (req: Request, res: Response) =>
 });
 
 
-// API routes
+// API routes with rate limiting
 import authRoutes from './api/routes/auth';
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes); // Strict rate limiting za auth
 
 import documentationRoutes from './api/routes/documentation';
+// Rate limiting se primenjuje samo na generate endpoint unutar rute, ne na sve
 app.use('/api/documentation', documentationRoutes);
 
+import searchRoutes from './api/routes/search';
+app.use('/api/search', apiLimiter, searchRoutes); // Search endpoint
+
+
+// Sentry error handler (mora biti pre custom error handler-a)
+// Sentry automatski hvata greške kroz init() poziv
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
@@ -801,6 +850,12 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
     path: req.path,
     method: req.method,
   });
+
+  // Sentry će automatski da hvata greške ako je inicijalizovan
+  if (env.NODE_ENV === 'production' && process.env.SENTRY_DSN) {
+    const Sentry = require('@sentry/node');
+    Sentry.captureException(err);
+  }
 
   res.status(500).json({
     error: 'Internal server error',

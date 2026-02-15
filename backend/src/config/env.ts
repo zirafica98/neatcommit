@@ -39,6 +39,16 @@ const envSchema = z.object({
 
   // API
   API_URL: z.string().url().default('http://localhost:3000'),
+
+  // Sentry (opciono)
+  SENTRY_DSN: z.string().url().optional(),
+
+  // Email/SMTP (opciono)
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional(),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().email().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

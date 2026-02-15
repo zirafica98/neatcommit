@@ -56,21 +56,33 @@ router.post('/github', async (req: Request, res: Response) => {
       bodyKeys: Object.keys(req.body || {}),
     });
 
-    // Verifikuj webhook signature
-    // TODO: Implement proper webhook signature verification
-    // Privremeno isključeno za testiranje - u produkciji MORA biti uključeno!
+    // Verifikuj webhook signature za bezbednost
     const signature = req.headers['x-hub-signature-256'] as string;
-    if (!signature) {
-      logger.warn('⚠️ Missing webhook signature (ignoring for development)');
-      // Privremeno ne vraćamo grešku za development
-      // res.status(401).json({ error: 'Missing signature' });
-      // return;
-    } else {
-      logger.debug('✅ Webhook signature present', { signature: signature.substring(0, 20) + '...' });
+    
+    // Za webhook verification, treba nam raw body
+    // Express.json() već je parsirao body, ali možemo da koristimo req.body kao string
+    // GitHub šalje JSON, tako da možemo da koristimo JSON.stringify(req.body)
+    // ALI, bolje je da koristimo raw body ako je dostupan (req.rawBody)
+    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    
+    // Importuj verification utility
+    const { verifyGitHubWebhookSignature } = await import('../../utils/webhook-verification');
+    
+    const isValid = verifyGitHubWebhookSignature(
+      typeof rawBody === 'string' ? rawBody : Buffer.from(rawBody),
+      signature
+    );
+    
+    if (!isValid) {
+      logger.error('❌ Webhook signature verification failed', {
+        event,
+        deliveryId,
+        hasSignature: !!signature,
+      });
+      return res.status(401).json({ error: 'Invalid webhook signature' });
     }
-
-    // Webhook verification će se uraditi kasnije
-    // Za sada samo proveravamo da li postoji signature
+    
+    logger.debug('✅ Webhook signature verified', { event, deliveryId });
 
     // Odgovori GitHub-u ODMAH da smo primili event (202 Accepted)
     // Ovo sprečava timeout jer GitHub očekuje odgovor u 10 sekundi
@@ -86,12 +98,14 @@ router.post('/github', async (req: Request, res: Response) => {
         stack: error instanceof Error ? error.stack : undefined,
       });
     });
+    return;
   } catch (error) {
     logger.error('❌ Webhook processing failed:', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
     res.status(500).json({ error: 'Webhook processing failed' });
+    return;
   }
 });
 

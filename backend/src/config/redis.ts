@@ -53,4 +53,9 @@ process.on('beforeExit', async () => {
   logger.info('Redis connection closed');
 });
 
+// Export getter function for cache middleware
+export function getRedisClient(): Redis {
+  return redis;
+}
+
 export default redis;

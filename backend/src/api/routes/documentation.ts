@@ -10,7 +10,8 @@ import { logger } from '../../utils/logger';
 import prisma from '../../config/database';
 import { verifyAccessToken } from '../../services/auth.service';
 import * as fs from 'fs';
-// import * as path from 'path'; // Not used
+import { validateBody, validationSchemas } from '../../middleware/validation';
+import { documentationLimiter, documentationDownloadLimiter } from '../../middleware/rate-limiter';
 
 const router = Router();
 
@@ -18,8 +19,10 @@ const router = Router();
  * POST /api/documentation/generate
  * 
  * Pokreće generisanje dokumentacije za repozitorijum
+ * 
+ * Rate limiting: 50 zahteva po satu po korisniku
  */
-router.post('/generate', async (req: Request, res: Response) => {
+router.post('/generate', documentationLimiter, validateBody(validationSchemas.generateDocumentation), async (req: Request, res: Response) => {
   try {
     logger.info('📝 POST /api/documentation/generate called');
     
@@ -68,8 +71,16 @@ router.post('/generate', async (req: Request, res: Response) => {
       installationId: repository.installation.installationId,
     });
 
-    // Proveri da li korisnik ima pristup
-    // TODO: Dodati proveru da li korisnik ima pristup ovom repozitorijumu
+    // Proveri da li korisnik ima pristup ovom repozitorijumu
+    const { checkRepositoryAccess } = await import('../../services/audit.service');
+    const hasAccess = await checkRepositoryAccess(payload.userId, repositoryId);
+    if (!hasAccess) {
+      logger.warn('⚠️ User does not have access to repository', {
+        userId: payload.userId,
+        repositoryId,
+      });
+      return res.status(403).json({ error: 'Access denied to this repository' });
+    }
 
     // Proveri da li već postoji dokumentacija u procesu
     logger.info('🔍 Checking for existing documentation');
@@ -83,10 +94,10 @@ router.post('/generate', async (req: Request, res: Response) => {
     });
 
     if (existingDoc) {
-      // Proveri da li je dokumentacija "zaglavljena" (starija od 10 minuta)
-      const createdAt = existingDoc.createdAt.getTime();
+      const createdAt = new Date(existingDoc.createdAt).getTime();
       const now = Date.now();
       const tenMinutesAgo = now - 10 * 60 * 1000; // 10 minuta
+
       const isStuck = createdAt < tenMinutesAgo;
 
       if (isStuck) {
@@ -117,6 +128,22 @@ router.post('/generate', async (req: Request, res: Response) => {
       }
     }
 
+    // Obriši sve stare dokumentacije za ovaj repozitorijum pre kreiranja nove
+    logger.info('🗑️ Deleting old documentations for repository', { repositoryId });
+    const oldDocumentations = await prisma.documentation.findMany({
+      where: { repositoryId },
+    });
+
+    for (const oldDoc of oldDocumentations) {
+      if (oldDoc.filePath && fs.existsSync(oldDoc.filePath)) {
+        fs.unlinkSync(oldDoc.filePath);
+        logger.debug('Deleted old documentation file from disk', { filePath: oldDoc.filePath });
+      }
+      await prisma.documentation.delete({ where: { id: oldDoc.id } });
+      logger.debug('Deleted old documentation record from DB', { documentationId: oldDoc.id });
+    }
+    logger.info(`✅ Deleted ${oldDocumentations.length} old documentations`);
+
     // Kreiraj dokumentaciju u bazi
     logger.info('💾 Creating documentation record');
     const documentation = await prisma.documentation.create({
@@ -129,48 +156,6 @@ router.post('/generate', async (req: Request, res: Response) => {
 
     logger.info('✅ Documentation record created', { documentationId: documentation.id });
 
-    // Obriši stare dokumentacije za ovaj repozitorijum (osim trenutne)
-    logger.info('🗑️ Deleting old documentations for repository', { repositoryId });
-    const oldDocumentations = await prisma.documentation.findMany({
-      where: {
-        repositoryId,
-        id: {
-          not: documentation.id, // Ne briši trenutnu dokumentaciju
-        },
-      },
-    });
-
-    // Obriši fajlove sa diska ako postoje
-    for (const oldDoc of oldDocumentations) {
-      if (oldDoc.filePath && fs.existsSync(oldDoc.filePath)) {
-        try {
-          fs.unlinkSync(oldDoc.filePath);
-          logger.debug('Deleted old documentation file', { filePath: oldDoc.filePath });
-        } catch (error) {
-          logger.warn('Failed to delete old documentation file', {
-            filePath: oldDoc.filePath,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-      }
-    }
-
-    // Obriši stare dokumentacije iz baze
-    if (oldDocumentations.length > 0) {
-      await prisma.documentation.deleteMany({
-        where: {
-          repositoryId,
-          id: {
-            not: documentation.id, // Ne briši trenutnu dokumentaciju
-          },
-        },
-      });
-      logger.info('✅ Deleted old documentations', {
-        count: oldDocumentations.length,
-        repositoryId,
-      });
-    }
-
     // Dodaj job u queue
     logger.info('📦 Loading documentation queue');
     // Koristimo dynamic import da izbegnemo probleme sa učitavanjem modula
@@ -179,17 +164,9 @@ router.post('/generate', async (req: Request, res: Response) => {
       const queueModule = await import('../../config/queue');
       queue = queueModule.documentationQueue;
       
-      logger.info('Queue module imported', {
-        availableExports: Object.keys(queueModule),
-        hasDocumentationQueue: 'documentationQueue' in queueModule,
-        queueType: typeof queue,
-        queueValue: queue ? 'defined' : 'undefined',
-      });
-      
       if (!queue) {
         logger.error('Documentation queue is undefined after import', {
           availableExports: Object.keys(queueModule),
-          queueModuleKeys: Object.keys(queueModule),
         });
         return res.status(500).json({ error: 'Documentation queue not available' });
       }
@@ -302,8 +279,10 @@ router.get('/:id', async (req: Request, res: Response) => {
  * GET /api/documentation/:id/download
  * 
  * Preuzima .doc fajl sa dokumentacijom
+ * 
+ * Rate limiting: 100 zahteva po 15 minuta
  */
-router.get('/:id/download', async (req: Request, res: Response) => {
+router.get('/:id/download', documentationDownloadLimiter, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -370,6 +349,7 @@ router.get('/repository/:repositoryId', async (req: Request, res: Response) => {
         totalLines: doc.totalLines,
         createdAt: doc.createdAt.toISOString(),
         completedAt: doc.completedAt?.toISOString(),
+        errorMessage: doc.errorMessage, // Dodato za prikaz greške na frontendu
       })),
     });
   } catch (error) {
