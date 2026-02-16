@@ -38,7 +38,7 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 });
 
 // Rate limiting middleware
-import { apiLimiter, authLimiter, webhookLimiter } from './middleware/rate-limiter';
+import { apiLimiter, authLimiter, webhookLimiter, subscriptionLimiter } from './middleware/rate-limiter';
 
 // Apply general rate limiting to all API routes
 app.use('/api', apiLimiter);
@@ -462,6 +462,104 @@ app.get('/api/dashboard/stats', async (_req: Request, res: Response) => {
   }
 });
 
+// Analytics endpoint for charts
+app.get('/api/dashboard/analytics', async (_req: Request, res: Response) => {
+  try {
+    logger.info('📊 GET /api/dashboard/analytics called');
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Security Score Trend (last 30 days)
+    const reviewsForTrend = await prisma.review.findMany({
+      where: {
+        status: 'completed',
+        securityScore: { not: null },
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      select: {
+        securityScore: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Group by day
+    const scoreTrend: { date: string; score: number }[] = [];
+    const dailyScores: Record<string, number[]> = {};
+
+    reviewsForTrend.forEach((review) => {
+      const date = review.createdAt.toISOString().split('T')[0];
+      if (!dailyScores[date]) {
+        dailyScores[date] = [];
+      }
+      dailyScores[date].push(review.securityScore || 0);
+    });
+
+    Object.keys(dailyScores).sort().forEach((date) => {
+      const scores = dailyScores[date];
+      const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+      scoreTrend.push({ date, score: avgScore });
+    });
+
+    // Issues by Category
+    const issuesByCategory = await prisma.issue.groupBy({
+      by: ['category'],
+      _count: true,
+    });
+
+    // Review Activity (last 30 days)
+    const reviewsForActivity = await prisma.review.findMany({
+      where: {
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      select: {
+        createdAt: true,
+        status: true,
+      },
+    });
+
+    const activityTrend: { date: string; count: number }[] = [];
+    const dailyActivity: Record<string, number> = {};
+
+    reviewsForActivity.forEach((review) => {
+      const date = review.createdAt.toISOString().split('T')[0];
+      dailyActivity[date] = (dailyActivity[date] || 0) + 1;
+    });
+
+    Object.keys(dailyActivity).sort().forEach((date) => {
+      activityTrend.push({ date, count: dailyActivity[date] });
+    });
+
+    // Repositories by Status
+    const repositoriesByStatus = await prisma.repository.groupBy({
+      by: ['enabled'],
+      _count: true,
+    });
+
+    return res.json({
+      scoreTrend: scoreTrend.length > 0 ? scoreTrend : [{ date: new Date().toISOString().split('T')[0], score: 0 }],
+      issuesByCategory: issuesByCategory.length > 0 
+        ? issuesByCategory.map((item) => ({
+            category: item.category,
+            count: item._count,
+          }))
+        : [{ category: 'SECURITY', count: 0 }],
+      activityTrend: activityTrend.length > 0 
+        ? activityTrend 
+        : [{ date: new Date().toISOString().split('T')[0], count: 0 }],
+      repositoriesByStatus: repositoriesByStatus.length > 0
+        ? repositoriesByStatus.map((item) => ({
+            enabled: item.enabled,
+            count: item._count,
+          }))
+        : [{ enabled: true, count: 0 }],
+    });
+  } catch (error) {
+    logger.error('Failed to fetch analytics:', error);
+    return res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
 // Repositories endpoints
 app.get('/api/repositories', async (req: Request, res: Response) => {
   try {
@@ -837,6 +935,14 @@ app.use('/api/documentation', documentationRoutes);
 
 import searchRoutes from './api/routes/search';
 app.use('/api/search', apiLimiter, searchRoutes); // Search endpoint
+
+// Export routes
+import exportRoutes from './api/routes/export';
+app.use('/api/export', apiLimiter, exportRoutes); // Export endpoints with rate limiting
+
+// Subscription routes
+import subscriptionRoutes from './api/routes/subscription';
+app.use('/api/subscription', subscriptionLimiter, subscriptionRoutes); // Subscription endpoints with relaxed rate limiting
 
 
 // Sentry error handler (mora biti pre custom error handler-a)

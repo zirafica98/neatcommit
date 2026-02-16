@@ -11,16 +11,22 @@ import env from '../config/env';
 
 /**
  * General API rate limiter
- * - 100 requests per 15 minutes po IP adresi
+ * - Development: 1000 requests per 15 minutes (viši limit za development)
+ * - Production: 100 requests per 15 minutes po IP adresi
+ * - Preskače subscription rute (imaju svoj limiter)
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minuta
-  max: 100, // 100 zahteva po IP-u
+  max: env.NODE_ENV === 'development' ? 1000 : 100, // Viši limit u development modu
   message: {
     error: 'Too many requests from this IP, please try again later.',
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req: Request) => {
+    // Preskoči subscription rute (imaju svoj limiter)
+    return req.path.startsWith('/subscription');
+  },
   handler: (req: Request, res: Response) => {
     logger.warn('Rate limit exceeded', {
       ip: req.ip,
@@ -30,6 +36,33 @@ export const apiLimiter = rateLimit({
     const resetTime = (req as any).rateLimit?.resetTime || Date.now() + 60 * 1000;
     res.status(429).json({
       error: 'Too many requests from this IP, please try again later.',
+      retryAfter: Math.ceil((resetTime - Date.now()) / 1000),
+    });
+  },
+});
+
+/**
+ * Subscription rate limiter (blaži limit za subscription endpoint-e)
+ * - Development: 500 requests per 15 minutes
+ * - Production: 200 requests per 15 minutes
+ */
+export const subscriptionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minuta
+  max: env.NODE_ENV === 'development' ? 500 : 200, // Blaži limit za subscription endpoint-e
+  message: {
+    error: 'Too many subscription requests, please try again later.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    logger.warn('Subscription rate limit exceeded', {
+      ip: req.ip,
+      path: req.path,
+      method: req.method,
+    });
+    const resetTime = (req as any).rateLimit?.resetTime || Date.now() + 60 * 1000;
+    res.status(429).json({
+      error: 'Too many subscription requests, please try again later.',
       retryAfter: Math.ceil((resetTime - Date.now()) / 1000),
     });
   },

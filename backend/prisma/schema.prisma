@@ -23,9 +23,34 @@ model User {
   installations Installation[]
   reviews       Review[]
   documentations Documentation[]
+  subscription  Subscription?
 
   @@index([githubId])
   @@map("users")
+}
+
+model Subscription {
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  planType              String   @default("FREE") // FREE, PRO, ENTERPRISE
+  status                String   @default("ACTIVE") // ACTIVE, CANCELLED, EXPIRED, TRIALING
+  currentPeriodStart    DateTime @default(now())
+  currentPeriodEnd      DateTime
+  reviewsUsedThisMonth  Int      @default(0)
+  repositoriesCount     Int      @default(0)
+  stripeSubscriptionId  String?
+  stripeCustomerId      String?
+  stripePriceId         String?
+  cancelAtPeriodEnd     Boolean  @default(false)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([planType])
+  @@index([status])
+  @@map("subscriptions")
 }
 
 model Installation {
