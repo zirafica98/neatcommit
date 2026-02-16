@@ -40,6 +40,14 @@ export const routes: Routes = [
         path: 'search',
         loadChildren: () => import('./features/search/search.routes').then(m => m.searchRoutes),
       },
+      {
+        path: 'help',
+        loadChildren: () => import('./features/help/help.routes').then(m => m.helpRoutes),
+      },
+      {
+        path: 'pricing',
+        loadChildren: () => import('./features/pricing/pricing.routes').then(m => m.pricingRoutes),
+      },
     ],
   },
   {

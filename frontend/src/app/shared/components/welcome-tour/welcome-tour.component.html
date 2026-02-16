@@ -1,0 +1,34 @@
+<div *ngIf="tourActive" class="tour-overlay" #tourOverlay>
+  <!-- Highlight overlay -->
+  <div class="tour-highlight" *ngIf="targetElement" [style]="getHighlightStyle()"></div>
+  
+  <!-- Tooltip -->
+  <div *ngIf="currentStep" class="tour-tooltip" #tourTooltip [class]="'tour-tooltip-' + (currentStep.position || 'right')">
+    <div class="tour-progress">
+      <div class="progress-bar">
+        <div class="progress-fill" [style.width.%]="progress"></div>
+      </div>
+      <span class="progress-text">{{ currentStepIndex + 1 }} / {{ tourService.steps.length }}</span>
+    </div>
+    
+    <div class="tour-content">
+      <h3>{{ currentStep.title }}</h3>
+      <p>{{ currentStep.description }}</p>
+    </div>
+    
+    <div class="tour-actions">
+      <button mat-button (click)="skipTour()" class="skip-button">
+        Skip Tour
+      </button>
+      <div class="nav-buttons">
+        <button mat-icon-button (click)="previousStep()" [disabled]="isFirstStep" *ngIf="!isFirstStep">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <button mat-raised-button color="primary" (click)="nextStep()">
+          {{ isLastStep ? 'Finish' : 'Next' }}
+          <mat-icon>{{ isLastStep ? 'check' : 'arrow_forward' }}</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

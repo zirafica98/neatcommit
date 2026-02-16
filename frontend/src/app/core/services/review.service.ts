@@ -43,4 +43,16 @@ export class ReviewService {
     // This endpoint will be created in backend
     return this.apiService.get<DashboardStats>('/api/dashboard/stats');
   }
+
+  /**
+   * Get analytics data for charts
+   */
+  getAnalytics(): Observable<{
+    scoreTrend: { date: string; score: number }[];
+    issuesByCategory: { category: string; count: number }[];
+    activityTrend: { date: string; count: number }[];
+    repositoriesByStatus: { enabled: boolean; count: number }[];
+  }> {
+    return this.apiService.get('/api/dashboard/analytics');
+  }
 }

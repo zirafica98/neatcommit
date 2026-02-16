@@ -11,14 +11,20 @@
   flex-wrap: wrap;
   gap: 16px;
   
+  .header-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  
   h1 {
     margin: 0 0 8px 0;
     font-size: 36px;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: white !important;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.5);
+    letter-spacing: -0.5px;
     
     @media (max-width: 768px) {
       font-size: 28px;
@@ -26,10 +32,11 @@
   }
   
   .subtitle {
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255, 255, 255, 0.95) !important;
     margin: 0;
     font-size: 16px;
-    font-weight: 400;
+    font-weight: 500;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
   }
   
   .pending-indicator {
@@ -78,10 +85,190 @@
   }
 }
 
+.subscription-warning {
+  margin-bottom: 2rem;
+
+  mat-card {
+    border: 2px solid;
+    animation: pulse-warning 2s infinite;
+
+    &.warning-expired {
+      border-color: #f44336;
+      background: linear-gradient(135deg, rgba(244, 67, 54, 0.1) 0%, rgba(244, 67, 54, 0.05) 100%);
+    }
+
+    &.warning-expiring {
+      border-color: #ff9800;
+      background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.05) 100%);
+    }
+  }
+
+  .warning-content {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+
+    mat-icon {
+      font-size: 2.5rem;
+      width: 2.5rem;
+      height: 2.5rem;
+    }
+
+    .warning-text {
+      flex: 1;
+      min-width: 200px;
+
+      h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: rgba(0, 0, 0, 0.7);
+      }
+    }
+
+    button {
+      flex-shrink: 0;
+    }
+  }
+
+  @keyframes pulse-warning {
+    0%, 100% {
+      box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 10px rgba(255, 152, 0, 0);
+    }
+  }
+}
+
+.subscription-usage-card {
+  margin-bottom: 2rem;
+
+  mat-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+  }
+
+  mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+
+      mat-icon {
+        color: #667eea;
+      }
+    }
+
+    .upgrade-link {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 500;
+      transition: opacity 0.2s;
+
+      &:hover {
+        opacity: 0.8;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .usage-item {
+    margin-bottom: 1.5rem;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    .usage-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+
+      .usage-label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: rgba(0, 0, 0, 0.7);
+      }
+
+      .usage-text {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: rgba(0, 0, 0, 0.8);
+      }
+    }
+
+    mat-progress-bar {
+      height: 8px;
+      border-radius: 4px;
+    }
+  }
+}
+
 .dashboard-content {
   display: flex;
   flex-direction: column;
   gap: 24px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  background: var(--bg-glass) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  
+  mat-card-header {
+    padding: 20px 24px 0 24px;
+    
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      color: #333;
+      
+      mat-icon {
+        color: var(--primary-color);
+      }
+    }
+  }
+  
+  mat-card-content {
+    padding: 24px;
+    height: 300px;
+    
+    canvas {
+      max-height: 100%;
+    }
+  }
 }
 
 .stats-grid {

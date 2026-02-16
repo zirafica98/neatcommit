@@ -1,0 +1,103 @@
+<div class="pricing-container">
+  <div class="pricing-header fade-in">
+    <h1>Choose Your Plan</h1>
+    <p class="subtitle">Select the perfect plan that fits your development needs</p>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+
+  <div *ngIf="error" class="error-container">
+    <mat-icon>error</mat-icon>
+    <p>{{ error }}</p>
+  </div>
+
+  <div *ngIf="!loading && !error" class="pricing-cards">
+    <div *ngFor="let plan of plans" class="pricing-card" [class.featured]="plan.id === 'PRO'" [class.current-plan]="isCurrentPlan(plan.id)" [class.disabled]="plan.id === 'FREE' && !canUseFreePlan">
+      <div class="plan-header">
+        <div class="plan-badge" [class.badge-free]="plan.id === 'FREE'"
+             [class.badge-pro]="plan.id === 'PRO'"
+             [class.badge-enterprise]="plan.id === 'ENTERPRISE'">
+          <mat-icon>{{ plan.id === 'FREE' ? 'free_breakfast' : plan.id === 'PRO' ? 'workspace_premium' : 'business' }}</mat-icon>
+        </div>
+        <h2>{{ plan.name }}</h2>
+        <div class="plan-price">
+          <span class="price">${{ plan.price }}</span>
+          <span class="interval">/{{ plan.interval }}</span>
+        </div>
+        <p class="plan-description" *ngIf="plan.id === 'FREE'">Perfect for trying out NeatCommit</p>
+        <p class="plan-description" *ngIf="plan.id === 'PRO'">Ideal for growing teams</p>
+        <p class="plan-description" *ngIf="plan.id === 'ENTERPRISE'">For large organizations</p>
+      </div>
+
+      <div class="plan-features">
+        <ul>
+          <li *ngFor="let feature of plan.features">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ feature }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="plan-actions">
+        <button
+          mat-raised-button
+          [color]="plan.id === 'PRO' ? 'primary' : 'accent'"
+          [disabled]="isCurrentPlan(plan.id) || upgrading || (plan.id === 'FREE' && !canUseFreePlan)"
+          (click)="upgradePlan(plan.id)"
+          class="upgrade-button"
+        >
+          <span *ngIf="isCurrentPlan(plan.id)">Current Plan</span>
+          <span *ngIf="!isCurrentPlan(plan.id) && !upgrading && !(plan.id === 'FREE' && !canUseFreePlan)">Upgrade</span>
+          <span *ngIf="!isCurrentPlan(plan.id) && upgrading">Upgrading...</span>
+          <span *ngIf="plan.id === 'FREE' && !canUseFreePlan">Not Available</span>
+        </button>
+        <p *ngIf="plan.id === 'FREE' && !canUseFreePlan" class="unavailable-text">
+          You have already used the FREE plan or had a paid plan
+        </p>
+      </div>
+
+      <div *ngIf="isCurrentPlan(plan.id) && currentSubscription && currentSubscription.limits" class="plan-usage">
+        <div class="usage-item">
+          <span class="usage-label">Reviews</span>
+          <div class="usage-bar">
+            <mat-progress-bar
+              mode="determinate"
+              [value]="getUsagePercentage(currentSubscription.limits!.usage.reviewsUsed, plan.limits.reviewsPerMonth)"
+            ></mat-progress-bar>
+            <span class="usage-text">
+              {{ currentSubscription.limits!.usage.reviewsUsed }} /
+              {{ plan.limits.reviewsPerMonth === null ? '∞' : plan.limits.reviewsPerMonth }}
+            </span>
+          </div>
+        </div>
+        <div class="usage-item">
+          <span class="usage-label">Repositories</span>
+          <div class="usage-bar">
+            <mat-progress-bar
+              mode="determinate"
+              [value]="getUsagePercentage(currentSubscription.limits!.usage.repositoriesUsed, plan.limits.repositories)"
+            ></mat-progress-bar>
+            <span class="usage-text">
+              {{ currentSubscription.limits!.usage.repositoriesUsed }} /
+              {{ plan.limits.repositories === null ? '∞' : plan.limits.repositories }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Form Overlay -->
+  <div *ngIf="showPaymentForm && selectedPlan" class="payment-overlay">
+    <div class="payment-modal">
+      <app-payment-form
+        [plan]="selectedPlan"
+        [isDemo]="true"
+        (submit)="onPaymentSubmit($event)"
+        (cancel)="onPaymentCancel()"
+      ></app-payment-form>
+    </div>
+  </div>
+</div>

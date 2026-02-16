@@ -2,7 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
 import { AuthService } from '../../../core/services/auth.service';
+import { SubscriptionService } from '../../../core/services/subscription.service';
+import { PlanSelectionModalComponent } from '../../../shared/components/plan-selection-modal/plan-selection-modal.component';
 
 @Component({
   selector: 'app-callback',
@@ -15,7 +18,9 @@ export class CallbackComponent implements OnInit {
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private authService: AuthService
+    private authService: AuthService,
+    private subscriptionService: SubscriptionService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -40,8 +45,7 @@ export class CallbackComponent implements OnInit {
         this.authService.getCurrentUser().subscribe({
           next: (user) => {
             if (user) {
-              const returnUrl = params['returnUrl'] || '/dashboard';
-              this.router.navigate([returnUrl]);
+              this.checkSubscriptionAndNavigate(params);
             } else {
               this.router.navigate(['/auth/login'], { queryParams: { error: 'auth_failed' } });
             }
@@ -58,8 +62,7 @@ export class CallbackComponent implements OnInit {
           this.authService.handleOAuthCallback(code).subscribe({
             next: (user) => {
               if (user) {
-                const returnUrl = params['returnUrl'] || '/dashboard';
-                this.router.navigate([returnUrl]);
+                this.checkSubscriptionAndNavigate(params);
               } else {
                 this.router.navigate(['/auth/login'], { queryParams: { error: 'auth_failed' } });
               }
@@ -73,6 +76,67 @@ export class CallbackComponent implements OnInit {
           this.router.navigate(['/auth/login']);
         }
       }
+    });
+  }
+
+  checkSubscriptionAndNavigate(params: any): void {
+    // Proveri subscription status
+    this.subscriptionService.getSubscription().subscribe({
+      next: (subscriptionInfo) => {
+        const returnUrl = params['returnUrl'] || '/dashboard';
+        
+        // Ako nema subscription ili je istekao, otvori modal za izbor plana
+        if (!subscriptionInfo.subscription || subscriptionInfo.needsPlanSelection) {
+          const isExpired = subscriptionInfo.warnings?.isExpired || false;
+          const hasUsedFreePlan = subscriptionInfo.subscription?.planType === 'FREE' && isExpired;
+          
+          const dialogRef = this.dialog.open(PlanSelectionModalComponent, {
+            width: '90vw',
+            maxWidth: '1200px',
+            disableClose: true,
+            data: {
+              isFirstLogin: !subscriptionInfo.subscription,
+              isExpired: isExpired,
+              hasUsedFreePlan: hasUsedFreePlan,
+            },
+          });
+
+          dialogRef.afterClosed().subscribe((result) => {
+            if (result?.success) {
+              this.router.navigate([returnUrl]);
+            } else {
+              // Ako je obavezno, ne dozvoli zatvaranje
+              if (!subscriptionInfo.subscription || isExpired) {
+                this.checkSubscriptionAndNavigate(params);
+              }
+            }
+          });
+        } else {
+          // Ako ima validan subscription, navigiraj
+          this.router.navigate([returnUrl]);
+        }
+      },
+      error: (error) => {
+        console.error('Error checking subscription:', error);
+        // Ako ne može da proveri, otvori modal za izbor plana
+        const dialogRef = this.dialog.open(PlanSelectionModalComponent, {
+          width: '90vw',
+          maxWidth: '1200px',
+          disableClose: true,
+          data: {
+            isFirstLogin: true,
+            isExpired: false,
+            hasUsedFreePlan: false,
+          },
+        });
+
+        dialogRef.afterClosed().subscribe((result) => {
+          if (result?.success) {
+            const returnUrl = params['returnUrl'] || '/dashboard';
+            this.router.navigate([returnUrl]);
+          }
+        });
+      },
     });
   }
 }

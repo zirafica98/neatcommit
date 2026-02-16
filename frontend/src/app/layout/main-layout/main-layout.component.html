@@ -8,25 +8,47 @@
     </div>
 
     <nav class="nav-menu">
-      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+      <a routerLink="/dashboard" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }" 
+         matTooltip="View security scores, statistics, and recent reviews" 
+         matTooltipPosition="right">
         <mat-icon>dashboard</mat-icon>
         <span>Dashboard</span>
       </a>
-      <a routerLink="/repositories" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+      <a routerLink="/repositories" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
+         matTooltip="Manage connected repositories and enable/disable analysis" 
+         matTooltipPosition="right">
         <mat-icon>folder</mat-icon>
         <span>Repositories</span>
       </a>
-      <a routerLink="/reviews" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+      <a routerLink="/reviews" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
+         matTooltip="Browse all code reviews and detailed analysis results" 
+         matTooltipPosition="right">
         <mat-icon>rate_review</mat-icon>
         <span>Reviews</span>
       </a>
-      <a routerLink="/documentation" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+      <a routerLink="/documentation" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
+         matTooltip="Generate AI-powered documentation for your repositories" 
+         matTooltipPosition="right">
         <mat-icon>description</mat-icon>
         <span>Documentation</span>
       </a>
-      <a routerLink="/settings" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }">
+      <a routerLink="/settings" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
+         matTooltip="Manage your account settings and preferences" 
+         matTooltipPosition="right">
         <mat-icon>settings</mat-icon>
         <span>Settings</span>
+      </a>
+      <a routerLink="/help" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
+         matTooltip="Get help, tutorials, and answers to common questions" 
+         matTooltipPosition="right">
+        <mat-icon>help_outline</mat-icon>
+        <span>Help</span>
+      </a>
+      <a routerLink="/pricing" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: false }"
+         matTooltip="View pricing plans and upgrade your subscription" 
+         matTooltipPosition="right">
+        <mat-icon>workspace_premium</mat-icon>
+        <span>Pricing</span>
       </a>
     </nav>
   </mat-sidenav>
@@ -45,7 +67,7 @@
       
       <div *ngIf="currentUser$ | async as user" class="user-menu">
         <button mat-icon-button [matMenuTriggerFor]="userMenu">
-          <img [src]="user.avatarUrl || '/assets/default-avatar.png'" [alt]="user.username" class="avatar">
+          <img [src]="user.avatarUrl || '/assets/default-avatar.png'" [alt]="user.username" class="avatar" loading="lazy">
         </button>
         <mat-menu #userMenu="matMenu">
           <div class="user-info">

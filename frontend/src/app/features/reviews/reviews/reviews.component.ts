@@ -10,6 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
 import { ReviewService } from '../../../core/services/review.service';
+import { ExportService } from '../../../core/services/export.service';
 import { RealtimeService } from '../../../core/services/realtime.service';
 import { Review } from '../../../shared/models';
 
@@ -40,6 +41,7 @@ export class ReviewsComponent implements OnInit, OnDestroy {
 
   constructor(
     private reviewService: ReviewService,
+    private exportService: ExportService,
     private realtimeService: RealtimeService
   ) {}
 
@@ -118,5 +120,9 @@ export class ReviewsComponent implements OnInit, OnDestroy {
       default:
         return '#9e9e9e';
     }
+  }
+
+  exportIssuesToCSV(): void {
+    this.exportService.exportIssuesToCSV(this.filterSeverity !== 'all' ? this.filterSeverity : undefined);
   }
 }

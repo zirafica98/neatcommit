@@ -9,6 +9,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatTabsModule } from '@angular/material/tabs';
 import { ReviewService } from '../../../core/services/review.service';
+import { ExportService } from '../../../core/services/export.service';
 import { Review, Issue } from '../../../shared/models';
 
 @Component({
@@ -36,7 +37,8 @@ export class ReviewDetailComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
-    private reviewService: ReviewService
+    private reviewService: ReviewService,
+    private exportService: ExportService
   ) {}
 
   ngOnInit(): void {
@@ -88,6 +90,18 @@ export class ReviewDetailComponent implements OnInit {
         return '#4caf50';
       default:
         return '#9e9e9e';
+    }
+  }
+
+  exportToPDF(): void {
+    if (this.review?.id) {
+      this.exportService.exportReviewToPDF(this.review.id);
+    }
+  }
+
+  exportIssuesToCSV(): void {
+    if (this.review?.id) {
+      this.exportService.exportIssuesToCSV(this.selectedSeverity !== 'all' ? this.selectedSeverity : undefined, this.review.id);
     }
   }
 }

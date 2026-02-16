@@ -28,6 +28,14 @@
         </div>
       </div>
       <div class="header-actions">
+        <button mat-raised-button color="primary" (click)="exportToPDF()">
+          <mat-icon>picture_as_pdf</mat-icon>
+          Export PDF
+        </button>
+        <button mat-stroked-button (click)="exportIssuesToCSV()" *ngIf="review.issues && review.issues.length > 0">
+          <mat-icon>file_download</mat-icon>
+          Export Issues CSV
+        </button>
         <span class="score-badge" [style.color]="getScoreColor(review.securityScore)">
           {{ review.securityScore }}/100
         </span>

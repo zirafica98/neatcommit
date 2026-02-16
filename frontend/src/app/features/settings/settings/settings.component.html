@@ -1,57 +1,307 @@
 <div class="settings-container">
   <div class="settings-header fade-in">
     <h1>Settings</h1>
-    <p class="subtitle">Manage your account and preferences</p>
+    <p class="subtitle">Manage your account, preferences, and application settings</p>
   </div>
 
   <div *ngIf="user" class="settings-content">
-    <mat-card class="profile-card">
+    <!-- Profile Section -->
+    <mat-card class="settings-card profile-card">
       <mat-card-header>
         <mat-card-title>
-          <mat-icon>person</mat-icon>
-          Profile Information
+          <div class="card-title-icon">
+            <mat-icon>person</mat-icon>
+          </div>
+          <div>
+            <h2>Profile Information</h2>
+            <p class="card-subtitle">Your account details and personal information</p>
+          </div>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
         <div class="profile-section">
           <div class="avatar-section">
-            <img [src]="user.avatarUrl || '/assets/default-avatar.png'" [alt]="user.username" class="avatar">
+            <div class="avatar-wrapper">
+              <img [src]="user.avatarUrl || '/assets/default-avatar.png'" [alt]="user.username" class="avatar" loading="lazy">
+              <div class="avatar-badge">
+                <mat-icon>verified</mat-icon>
+              </div>
+            </div>
+            <div class="avatar-info">
+              <h3>{{ user.name || user.username }}</h3>
+              <p class="username">&#64;{{ user.username }}</p>
+            </div>
           </div>
           <div class="profile-info">
-            <mat-form-field appearance="outline">
-              <mat-label>Username</mat-label>
-              <input matInput [value]="user.username" readonly>
-            </mat-form-field>
-            <mat-form-field appearance="outline" *ngIf="user.email">
-              <mat-label>Email</mat-label>
-              <input matInput [value]="user.email" readonly>
-            </mat-form-field>
-            <mat-form-field appearance="outline" *ngIf="user.name">
-              <mat-label>Name</mat-label>
-              <input matInput [value]="user.name" readonly>
-            </mat-form-field>
-            <div class="profile-meta">
-              <p><strong>GitHub ID:</strong> {{ user.githubId }}</p>
-              <p><strong>Member since:</strong> {{ user.createdAt | date: 'medium' }}</p>
+            <div class="info-grid">
+              <div class="info-item">
+                <mat-icon class="info-icon">badge</mat-icon>
+                <div class="info-content">
+                  <label>Username</label>
+                  <p>{{ user.username }}</p>
+                </div>
+              </div>
+              <div class="info-item" *ngIf="user.email">
+                <mat-icon class="info-icon">email</mat-icon>
+                <div class="info-content">
+                  <label>Email</label>
+                  <p>{{ user.email }}</p>
+                </div>
+              </div>
+              <div class="info-item" *ngIf="user.name">
+                <mat-icon class="info-icon">person_outline</mat-icon>
+                <div class="info-content">
+                  <label>Full Name</label>
+                  <p>{{ user.name }}</p>
+                </div>
+              </div>
+              <div class="info-item">
+                <mat-icon class="info-icon">fingerprint</mat-icon>
+                <div class="info-content">
+                  <label>GitHub ID</label>
+                  <p>{{ user.githubId }}</p>
+                </div>
+              </div>
+              <div class="info-item">
+                <mat-icon class="info-icon">calendar_today</mat-icon>
+                <div class="info-content">
+                  <label>Member Since</label>
+                  <p>{{ user.createdAt | date: 'mediumDate' }}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </mat-card-content>
     </mat-card>
 
-    <mat-card class="actions-card">
+    <!-- Quick Actions -->
+    <div class="cards-grid">
+      <mat-card class="settings-card action-card">
+        <mat-card-header>
+          <mat-card-title>
+            <div class="card-title-icon">
+              <mat-icon>link</mat-icon>
+            </div>
+            <div>
+              <h2>GitHub Account</h2>
+              <p class="card-subtitle">Manage your GitHub integration</p>
+            </div>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="card-description">View your GitHub profile, manage repositories, and configure app installations.</p>
+          <div class="card-actions">
+            <button mat-raised-button color="primary" [attr.href]="'https://github.com/' + user.username" target="_blank">
+              <mat-icon>open_in_new</mat-icon>
+              View Profile
+            </button>
+            <button mat-stroked-button [attr.href]="'https://github.com/settings/installations'" target="_blank">
+              <mat-icon>settings</mat-icon>
+              Manage Apps
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="settings-card preferences-card">
+        <mat-card-header>
+          <mat-card-title>
+            <div class="card-title-icon">
+              <mat-icon>tune</mat-icon>
+            </div>
+            <div>
+              <h2>Preferences</h2>
+              <p class="card-subtitle">Customize your experience</p>
+            </div>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="preference-item">
+            <div class="preference-info">
+              <h3>Dark Mode</h3>
+              <p>Switch between light and dark theme</p>
+            </div>
+            <mat-slide-toggle [checked]="isDarkTheme" (change)="toggleTheme($event.checked)"></mat-slide-toggle>
+          </div>
+          <div class="preference-item">
+            <div class="preference-info">
+              <h3>Email Notifications</h3>
+              <p>Receive email updates about code reviews</p>
+            </div>
+            <mat-slide-toggle [checked]="emailNotifications" (change)="toggleEmailNotifications($event.checked)"></mat-slide-toggle>
+          </div>
+          <div class="preference-item">
+            <div class="preference-info">
+              <h3>Auto-refresh</h3>
+              <p>Automatically refresh dashboard data</p>
+            </div>
+            <mat-slide-toggle [checked]="autoRefresh" (change)="toggleAutoRefresh($event.checked)"></mat-slide-toggle>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Subscription Card -->
+      <mat-card class="settings-card subscription-card">
+        <mat-card-header>
+          <mat-card-title>
+            <div class="card-title-icon">
+              <mat-icon>workspace_premium</mat-icon>
+            </div>
+            <div>
+              <h2>Subscription</h2>
+              <p class="card-subtitle">Manage your plan and usage</p>
+            </div>
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="subscriptionLoading" class="loading-state">
+            <p>Loading subscription...</p>
+          </div>
+          <div *ngIf="!subscriptionLoading && subscription && subscription.subscription && subscription.limits" class="subscription-content">
+            <div class="plan-info">
+              <div class="plan-badge" [class.plan-free]="subscription.subscription!.planType === 'FREE'"
+                   [class.plan-pro]="subscription.subscription!.planType === 'PRO'"
+                   [class.plan-enterprise]="subscription.subscription!.planType === 'ENTERPRISE'">
+                <span>{{ subscription.subscription!.planType }}</span>
+              </div>
+              <p class="plan-description">
+                Current billing period: {{ subscription.subscription!.currentPeriodStart | date: 'shortDate' }} - 
+                {{ subscription.subscription!.currentPeriodEnd | date: 'shortDate' }}
+              </p>
+            </div>
+            <div class="usage-section">
+              <div class="usage-item">
+                <div class="usage-header">
+                  <span class="usage-label">Reviews This Month</span>
+                  <span class="usage-text">
+                    {{ subscription.limits!.usage.reviewsUsed }} /
+                    {{ subscription.limits!.reviewsPerMonth === null ? '∞' : subscription.limits!.reviewsPerMonth }}
+                  </span>
+                </div>
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="getUsagePercentage(subscription.limits!.usage.reviewsUsed, subscription.limits!.reviewsPerMonth)"
+                  [color]="getUsagePercentage(subscription.limits!.usage.reviewsUsed, subscription.limits!.reviewsPerMonth) > 80 ? 'warn' : 'primary'"
+                ></mat-progress-bar>
+              </div>
+              <div class="usage-item">
+                <div class="usage-header">
+                  <span class="usage-label">Repositories</span>
+                  <span class="usage-text">
+                    {{ subscription.limits!.usage.repositoriesUsed }} /
+                    {{ subscription.limits!.repositories === null ? '∞' : subscription.limits!.repositories }}
+                  </span>
+                </div>
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="getUsagePercentage(subscription.limits!.usage.repositoriesUsed, subscription.limits!.repositories)"
+                  [color]="getUsagePercentage(subscription.limits!.usage.repositoriesUsed, subscription.limits!.repositories) > 80 ? 'warn' : 'primary'"
+                ></mat-progress-bar>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button mat-raised-button color="primary" routerLink="/pricing">
+                <mat-icon>upgrade</mat-icon>
+                Upgrade Plan
+              </button>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Statistics & Activity -->
+    <mat-card class="settings-card stats-card">
       <mat-card-header>
         <mat-card-title>
-          <mat-icon>link</mat-icon>
-          GitHub Account
+          <div class="card-title-icon">
+            <mat-icon>analytics</mat-icon>
+          </div>
+          <div>
+            <h2>Account Statistics</h2>
+            <p class="card-subtitle">Your activity and usage overview</p>
+          </div>
         </mat-card-title>
       </mat-card-header>
       <mat-card-content>
-        <p>View your GitHub profile and manage connected repositories.</p>
-        <button mat-raised-button color="primary" [attr.href]="'https://github.com/' + user.username" target="_blank">
-          <mat-icon>open_in_new</mat-icon>
-          View GitHub Profile
-        </button>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-icon">
+              <mat-icon>rate_review</mat-icon>
+            </div>
+            <div class="stat-content">
+              <h3>{{ totalReviews }}</h3>
+              <p>Total Reviews</p>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-icon">
+              <mat-icon>folder</mat-icon>
+            </div>
+            <div class="stat-content">
+              <h3>{{ totalRepositories }}</h3>
+              <p>Repositories</p>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-icon">
+              <mat-icon>bug_report</mat-icon>
+            </div>
+            <div class="stat-content">
+              <h3>{{ totalIssues }}</h3>
+              <p>Issues Found</p>
+            </div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-icon">
+              <mat-icon>security</mat-icon>
+            </div>
+            <div class="stat-content">
+              <h3>{{ averageScore }}/100</h3>
+              <p>Avg Security Score</p>
+            </div>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Danger Zone -->
+    <mat-card class="settings-card danger-card">
+      <mat-card-header>
+        <mat-card-title>
+          <div class="card-title-icon danger-icon">
+            <mat-icon>warning</mat-icon>
+          </div>
+          <div>
+            <h2>Danger Zone</h2>
+            <p class="card-subtitle">Irreversible and destructive actions</p>
+          </div>
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="danger-actions">
+          <div class="danger-item">
+            <div class="danger-info">
+              <h3>Clear Cache</h3>
+              <p>Clear all cached data and refresh your session</p>
+            </div>
+            <button mat-stroked-button color="warn" (click)="clearCache()">
+              <mat-icon>delete_sweep</mat-icon>
+              Clear Cache
+            </button>
+          </div>
+          <div class="danger-item">
+            <div class="danger-info">
+              <h3>Disconnect Account</h3>
+              <p>Disconnect your GitHub account from NeatCommit</p>
+            </div>
+            <button mat-stroked-button color="warn" (click)="disconnectAccount()">
+              <mat-icon>link_off</mat-icon>
+              Disconnect
+            </button>
+          </div>
+        </div>
       </mat-card-content>
     </mat-card>
   </div>

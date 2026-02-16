@@ -4,16 +4,22 @@
       <h1>Reviews</h1>
       <p class="subtitle">Code review history and analysis results</p>
     </div>
-    <div class="filter-container">
-      <mat-form-field appearance="outline">
-        <mat-select [value]="filterSeverity" (selectionChange)="onFilterChange($event.value)">
-          <mat-option value="all">All Issues</mat-option>
-          <mat-option value="CRITICAL">Critical</mat-option>
-          <mat-option value="HIGH">High</mat-option>
-          <mat-option value="MEDIUM">Medium</mat-option>
-          <mat-option value="LOW">Low</mat-option>
-        </mat-select>
-      </mat-form-field>
+    <div class="header-actions">
+      <div class="filter-container">
+        <mat-form-field appearance="outline">
+          <mat-select [value]="filterSeverity" (selectionChange)="onFilterChange($event.value)">
+            <mat-option value="all">All Issues</mat-option>
+            <mat-option value="CRITICAL">Critical</mat-option>
+            <mat-option value="HIGH">High</mat-option>
+            <mat-option value="MEDIUM">Medium</mat-option>
+            <mat-option value="LOW">Low</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <button mat-raised-button color="primary" (click)="exportIssuesToCSV()">
+        <mat-icon>file_download</mat-icon>
+        Export Issues CSV
+      </button>
     </div>
   </div>
 

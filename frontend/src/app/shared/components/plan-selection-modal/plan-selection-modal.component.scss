@@ -1,0 +1,172 @@
+.plan-selection-modal {
+  padding: 0;
+  max-width: 1200px;
+  width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  position: relative;
+  padding: 2rem;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px 8px 0 0;
+
+  h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 2rem;
+    font-weight: 700;
+  }
+
+  .subtitle {
+    margin: 0;
+    font-size: 1rem;
+    opacity: 0.9;
+  }
+
+  .close-button {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    color: white;
+  }
+}
+
+.modal-content {
+  padding: 2rem;
+  background: white;
+}
+
+.loading-container,
+.error-container {
+  text-align: center;
+  padding: 3rem;
+}
+
+.error-container {
+  color: #f44336;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-direction: column;
+}
+
+.plans-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+.plan-card {
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  background: white;
+
+  &:hover:not(.disabled) {
+    border-color: #667eea;
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+
+  &.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+    
+    .select-button {
+      pointer-events: none;
+    }
+  }
+
+  .plan-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+
+    h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .plan-price {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 0.25rem;
+
+      .price {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #667eea;
+      }
+
+      .interval {
+        font-size: 1rem;
+        color: #666;
+      }
+    }
+  }
+
+  .plan-features {
+    margin-bottom: 1.5rem;
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+
+        mat-icon {
+          color: #4caf50;
+          font-size: 1.25rem;
+          width: 1.25rem;
+          height: 1.25rem;
+        }
+
+        span {
+          font-size: 0.9rem;
+          color: #333;
+        }
+      }
+    }
+  }
+
+  .plan-actions {
+    .select-button {
+      width: 100%;
+      padding: 0.75rem;
+      font-weight: 600;
+    }
+
+    .unavailable-text {
+      text-align: center;
+      margin-top: 0.5rem;
+      font-size: 0.875rem;
+      color: #f44336;
+      font-weight: 500;
+    }
+  }
+}
+
+.payment-container {
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .plans-container {
+    grid-template-columns: 1fr;
+  }
+}

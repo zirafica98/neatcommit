@@ -1,0 +1,71 @@
+<div class="plan-selection-modal">
+  <div class="modal-header">
+    <h2 *ngIf="data.isFirstLogin">Welcome to NeatCommit!</h2>
+    <h2 *ngIf="data.isExpired">Your Subscription Has Expired</h2>
+    <h2 *ngIf="!data.isFirstLogin && !data.isExpired">Select a Plan</h2>
+    <p class="subtitle" *ngIf="data.isFirstLogin">Please select a subscription plan to get started</p>
+    <p class="subtitle" *ngIf="data.isExpired">Please select a new plan to continue using NeatCommit</p>
+    <button *ngIf="!data.isFirstLogin && !data.isExpired" mat-icon-button class="close-button" (click)="close()">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="modal-content">
+    <div *ngIf="loading" class="loading-container">
+      <mat-spinner></mat-spinner>
+      <p>Loading plans...</p>
+    </div>
+
+    <div *ngIf="error" class="error-container">
+      <mat-icon color="warn">error</mat-icon>
+      <p>{{ error }}</p>
+    </div>
+
+    <div *ngIf="!loading && !showPaymentForm" class="plans-container">
+      <div *ngFor="let plan of plans" class="plan-card" [class.disabled]="!canSelectPlan(plan)">
+        <div class="plan-header">
+          <h3>{{ plan.name }}</h3>
+          <div class="plan-price">
+            <span class="price">${{ plan.price }}</span>
+            <span class="interval">/{{ plan.interval }}</span>
+          </div>
+        </div>
+
+        <div class="plan-features">
+          <ul>
+            <li *ngFor="let feature of plan.features">
+              <mat-icon>check_circle</mat-icon>
+              <span>{{ feature }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="plan-actions">
+          <button
+            mat-raised-button
+            [color]="plan.id === 'PRO' ? 'primary' : 'accent'"
+            [disabled]="!canSelectPlan(plan) || creating"
+            (click)="selectPlan(plan)"
+            class="select-button"
+            type="button"
+          >
+            <span *ngIf="!creating">Select Plan</span>
+            <span *ngIf="creating">Processing...</span>
+          </button>
+          <p *ngIf="plan.id === 'FREE' && !canUseFreePlan" class="unavailable-text">
+            Not available
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="showPaymentForm && selectedPlan" class="payment-container">
+      <app-payment-form
+        [plan]="selectedPlan"
+        [isDemo]="true"
+        (submit)="onPaymentSubmit($event)"
+        (cancel)="onPaymentCancel()"
+      ></app-payment-form>
+    </div>
+  </div>
+</div>

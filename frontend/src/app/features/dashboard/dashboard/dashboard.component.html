@@ -4,9 +4,15 @@
       <h1>Dashboard</h1>
       <p class="subtitle">Overview of your code reviews and security analysis</p>
     </div>
-    <div *ngIf="hasActivelyAnalyzing" class="pending-indicator">
-      <mat-icon>sync</mat-icon>
-      <span>Analyzing reviews...</span>
+    <div class="header-actions">
+      <div *ngIf="hasActivelyAnalyzing" class="pending-indicator">
+        <mat-icon>sync</mat-icon>
+        <span>Analyzing reviews...</span>
+      </div>
+      <button mat-raised-button color="primary" (click)="exportStatsToExcel()">
+        <mat-icon>file_download</mat-icon>
+        Export Statistics
+      </button>
     </div>
   </div>
 
@@ -23,10 +29,91 @@
     </button>
   </div>
 
+  <div *ngIf="analyticsLoading" class="loading-container">
+    <mat-spinner></mat-spinner>
+    <p>Loading analytics...</p>
+  </div>
+
+  <!-- Subscription Warning -->
+  <div *ngIf="subscription && subscription.warnings && subscription.subscription" class="subscription-warning fade-in">
+    <mat-card [class.warning-expired]="subscription.warnings.isExpired" [class.warning-expiring]="subscription.warnings.isExpiringSoon">
+      <mat-card-content>
+        <div class="warning-content">
+          <mat-icon [color]="subscription.warnings.isExpired ? 'warn' : 'accent'">
+            {{ subscription.warnings.isExpired ? 'error' : 'warning' }}
+          </mat-icon>
+          <div class="warning-text">
+            <h3 *ngIf="subscription.warnings.isExpired">Your subscription has expired</h3>
+            <h3 *ngIf="!subscription.warnings.isExpired && subscription.warnings.isExpiringSoon">
+              Your subscription expires in {{ subscription.warnings.daysUntilExpiry }} day(s)
+            </h3>
+            <p *ngIf="subscription.warnings.isExpired">
+              Please select a new plan to continue using NeatCommit.
+            </p>
+            <p *ngIf="!subscription.warnings.isExpired && subscription.warnings.isExpiringSoon">
+              Renew your subscription to avoid service interruption.
+            </p>
+          </div>
+          <button mat-raised-button color="primary" routerLink="/pricing">
+            <mat-icon>workspace_premium</mat-icon>
+            Select Plan
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Subscription Usage Card -->
+  <div *ngIf="subscription && subscription.subscription && subscription.limits && !subscriptionLoading" class="subscription-usage-card fade-in">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>workspace_premium</mat-icon>
+          <span>Current Plan: {{ subscription.subscription.planType }}</span>
+        </mat-card-title>
+        <mat-card-subtitle>
+          <a routerLink="/pricing" class="upgrade-link">Upgrade Plan</a>
+        </mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="usage-item">
+          <div class="usage-header">
+            <span class="usage-label">Reviews This Month</span>
+            <span class="usage-text">
+              {{ subscription.limits.usage.reviewsUsed }} /
+              {{ subscription.limits.reviewsPerMonth === null ? '∞' : subscription.limits.reviewsPerMonth }}
+            </span>
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="getUsagePercentage(subscription.limits.usage.reviewsUsed, subscription.limits.reviewsPerMonth)"
+            [color]="getUsagePercentage(subscription.limits.usage.reviewsUsed, subscription.limits.reviewsPerMonth) > 80 ? 'warn' : 'primary'"
+          ></mat-progress-bar>
+        </div>
+        <div class="usage-item">
+          <div class="usage-header">
+            <span class="usage-label">Repositories</span>
+            <span class="usage-text">
+              {{ subscription.limits.usage.repositoriesUsed }} /
+              {{ subscription.limits.repositories === null ? '∞' : subscription.limits.repositories }}
+            </span>
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="getUsagePercentage(subscription.limits.usage.repositoriesUsed, subscription.limits.repositories)"
+            [color]="getUsagePercentage(subscription.limits.usage.repositoriesUsed, subscription.limits.repositories) > 80 ? 'warn' : 'primary'"
+          ></mat-progress-bar>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
   <div *ngIf="!loading && !error && stats" class="dashboard-content">
     <!-- Statistics Cards -->
     <div class="stats-grid">
-      <mat-card class="stat-card">
+      <mat-card class="stat-card" 
+                matTooltip="Overall security score based on all completed reviews (0-100 scale)" 
+                matTooltipPosition="above">
         <mat-card-content>
           <div class="stat-icon" [style.background]="getScoreGradient(stats.averageScore)">
             <mat-icon>security</mat-icon>
@@ -73,6 +160,71 @@
             <h3>Critical Issues</h3>
             <p class="stat-value">{{ stats.criticalIssues }}</p>
           </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Analytics Charts -->
+    <div *ngIf="analyticsLoading" class="loading-container">
+      <mat-spinner></mat-spinner>
+      <p>Loading analytics...</p>
+    </div>
+    
+    <div *ngIf="!analyticsLoading && !analytics" class="empty-state">
+      <mat-icon>bar_chart</mat-icon>
+      <p>No analytics data available yet</p>
+    </div>
+    
+    <div class="charts-grid" *ngIf="analytics && !analyticsLoading">
+      <!-- Security Score Trend -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>trending_up</mat-icon>
+            Security Score Trend (30 days)
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <canvas #scoreTrendChart></canvas>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Issues by Category -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>pie_chart</mat-icon>
+            Issues by Category
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <canvas #issuesCategoryChart></canvas>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Review Activity -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>bar_chart</mat-icon>
+            Review Activity (30 days)
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <canvas #activityChart></canvas>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Repositories by Status -->
+      <mat-card class="chart-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>donut_large</mat-icon>
+            Repositories by Status
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <canvas #reposStatusChart></canvas>
         </mat-card-content>
       </mat-card>
     </div>

@@ -40,7 +40,9 @@
       margin: 0 0 12px 0;
       font-size: 32px;
       font-weight: 700;
-      color: #333;
+      color: white !important;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.5);
+      letter-spacing: -0.5px;
       line-height: 1.3;
       
       @media (max-width: 768px) {
@@ -63,6 +65,9 @@
   }
   
   .header-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
     display: flex;
     align-items: center;
     gap: 16px;

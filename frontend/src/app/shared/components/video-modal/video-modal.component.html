@@ -1,0 +1,31 @@
+<div class="video-modal">
+  <div class="modal-header">
+    <h2>{{ data.title }}</h2>
+    <button mat-icon-button (click)="close()" class="close-button">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <div class="modal-content">
+    <div *ngIf="safeUrl" class="video-container">
+      <iframe
+        [src]="safeUrl"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen
+        class="video-iframe">
+      </iframe>
+    </div>
+
+    <div *ngIf="externalUrl && !safeUrl" class="external-video">
+      <div class="external-video-content">
+        <mat-icon class="external-icon">play_circle</mat-icon>
+        <p>This video will open in a new tab</p>
+        <button mat-raised-button color="primary" (click)="openExternal()">
+          <mat-icon>open_in_new</mat-icon>
+          Open Video
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
