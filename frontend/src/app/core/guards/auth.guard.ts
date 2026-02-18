@@ -24,6 +24,12 @@ export const authGuard: CanActivateFn = async (route, state) => {
     return false;
   }
 
+  // Proveri da li je korisnik admin - ako jeste, preskoči subscription check
+  const currentUser = await firstValueFrom(authService.currentUser$);
+  if (currentUser?.role === 'ADMIN') {
+    return true;
+  }
+
   // Proveri subscription status
   try {
     const loginCheck = await firstValueFrom(subscriptionService.checkLogin());

@@ -14,7 +14,12 @@
     "test:watch": "jest --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "set-admin": "node scripts/set-admin.js",
+    "create-admin": "node scripts/create-admin.js",
+    "fix-duplicates": "node scripts/fix-duplicate-usernames.js",
+    "check-user": "node scripts/check-user.js",
+    "add-password": "node scripts/add-password.js"
   },
   "keywords": [
     "code-review",
@@ -35,6 +40,7 @@
     "@octokit/rest": "^20.0.0",
     "@prisma/client": "^5.7.1",
     "@sentry/node": "^10.38.0",
+    "bcrypt": "^5.1.1",
     "bullmq": "^5.1.0",
     "cors": "^2.8.5",
     "docx": "^9.5.1",
@@ -50,6 +56,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@types/bcrypt": "^5.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.11",

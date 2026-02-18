@@ -6,7 +6,7 @@
 
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, BehaviorSubject, of } from 'rxjs';
+import { Observable, BehaviorSubject, of, throwError } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
 import { ApiService } from './api.service';
 import { User } from '../../shared/models';
@@ -42,6 +42,13 @@ export class AuthService {
   }
 
   /**
+   * Check if user is admin
+   */
+  get isAdmin(): boolean {
+    return this.currentUser?.role === 'ADMIN';
+  }
+
+  /**
    * Get access token from storage
    */
   getToken(): string | null {
@@ -56,11 +63,60 @@ export class AuthService {
   }
 
   /**
+   * Login sa username/password-om
+   */
+  login(username: string, password: string): Observable<{ user: User; accessToken: string; refreshToken: string }> {
+    return this.apiService.post<{ user: User; accessToken: string; refreshToken: string }>('/api/auth/login', {
+      username,
+      password,
+    }).pipe(
+      tap((response) => {
+        // Store tokens
+        localStorage.setItem('access_token', response.accessToken);
+        localStorage.setItem('refresh_token', response.refreshToken);
+        
+        // Store user
+        this.setUser(response.user);
+      }),
+      catchError((error) => {
+        console.error('Login error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Register novog korisnika
+   */
+  register(username: string, email: string, password: string, name?: string): Observable<{ user: User; accessToken: string; refreshToken: string }> {
+    return this.apiService.post<{ user: User; accessToken: string; refreshToken: string }>('/api/auth/register', {
+      username,
+      email,
+      password,
+      name,
+    }).pipe(
+      tap((response) => {
+        // Store tokens
+        localStorage.setItem('access_token', response.accessToken);
+        localStorage.setItem('refresh_token', response.refreshToken);
+        
+        // Store user
+        this.setUser(response.user);
+      }),
+      catchError((error) => {
+        console.error('Registration error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
    * Initiate GitHub OAuth login
+   * Redirektuje korisnika na backend OAuth endpoint koji će ga redirektovati na GitHub
    */
   loginWithGitHub(): void {
-    // This will redirect to GitHub OAuth
-    // Backend endpoint: /api/auth/github
+    // Redirektuj direktno na backend OAuth endpoint
+    // Backend će proveriti da li korisnik ima installation i redirektovati ga na GitHub OAuth
     window.location.href = `${environment.apiUrl}/api/auth/github`;
   }
 
@@ -136,7 +192,7 @@ export class AuthService {
   /**
    * Set current user
    */
-  private setUser(user: User): void {
+  setUser(user: User): void {
     this.currentUserSubject.next(user);
     localStorage.setItem('user', JSON.stringify(user));
   }

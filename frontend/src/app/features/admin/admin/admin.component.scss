@@ -1,0 +1,218 @@
+.admin-container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.admin-header {
+  margin-bottom: 2rem;
+
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 2rem;
+    font-weight: 600;
+    color: #1a1a1a;
+
+    mat-icon {
+      font-size: 2rem;
+      width: 2rem;
+      height: 2rem;
+    }
+  }
+}
+
+.loading-container {
+  margin: 2rem 0;
+}
+
+.admin-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  mat-card-header {
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+
+      mat-icon {
+        color: #667eea;
+      }
+    }
+  }
+
+  mat-card-content {
+    padding-top: 1.5rem;
+  }
+
+  .stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+  }
+
+  .stat-details {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .stat-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .label {
+      color: #666;
+      font-size: 0.9rem;
+    }
+
+    .value {
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+  }
+
+  .stat-breakdown {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f0f0f0;
+
+    .breakdown-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+
+      strong {
+        color: #667eea;
+      }
+    }
+  }
+
+  &.revenue {
+    .stat-value {
+      color: #4caf50;
+    }
+  }
+
+  &.users {
+    .stat-value {
+      color: #2196f3;
+    }
+  }
+
+  &.subscriptions {
+    .stat-value {
+      color: #ff9800;
+    }
+  }
+
+  &.reviews {
+    .stat-value {
+      color: #9c27b0;
+    }
+  }
+
+  &.repositories {
+    .stat-value {
+      color: #f44336;
+    }
+  }
+}
+
+.users-table-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  mat-card-header {
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.25rem;
+      font-weight: 600;
+
+      mat-icon {
+        color: #667eea;
+      }
+    }
+  }
+
+  mat-card-content {
+    position: relative;
+    padding: 0;
+  }
+
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+  }
+}
+
+.users-table {
+  width: 100%;
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+    }
+  }
+
+  th {
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+
+  td {
+    color: #666;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-container {
+    padding: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .users-table {
+    font-size: 0.875rem;
+  }
+}

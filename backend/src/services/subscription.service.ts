@@ -229,6 +229,7 @@ export async function getUserLimits(userId: string): Promise<PlanLimits & { plan
 export async function updateSubscription(
   userId: string,
   planType: PlanType,
+  promoCodeId?: string | null,
   stripeSubscriptionId?: string,
   stripeCustomerId?: string,
   stripePriceId?: string
@@ -245,6 +246,7 @@ export async function updateSubscription(
       currentPeriodStart: new Date(),
       currentPeriodEnd: periodEnd,
       reviewsUsedThisMonth: 0, // Resetuj za novi plan
+      promoCodeId: promoCodeId || null,
       stripeSubscriptionId,
       stripeCustomerId,
       stripePriceId,
@@ -347,7 +349,8 @@ export async function hasHadPaidPlan(userId: string): Promise<boolean> {
 export async function createSubscription(
   userId: string,
   planType: PlanType,
-  isDemo: boolean = false
+  isDemo: boolean = false,
+  promoCodeId?: string | null
 ): Promise<any> {
   // Proveri da li je FREE plan i da li je već koristio
   if (planType === 'FREE') {
@@ -367,7 +370,7 @@ export async function createSubscription(
   
   if (existing) {
     // Ažuriraj postojeći
-    return await updateSubscription(userId, planType);
+    return await updateSubscription(userId, planType, promoCodeId);
   } else {
     // Kreiraj novi
     // @ts-ignore
@@ -380,6 +383,7 @@ export async function createSubscription(
         currentPeriodEnd: periodEnd,
         reviewsUsedThisMonth: 0,
         repositoriesCount: 0,
+        promoCodeId: promoCodeId || null,
       },
     });
   }

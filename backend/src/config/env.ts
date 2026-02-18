@@ -23,9 +23,10 @@ const envSchema = z.object({
 
   // GitHub
   GITHUB_APP_ID: z.string(),
+  GITHUB_APP_NAME: z.string().optional(), // App name (slug) za installation URL
   GITHUB_PRIVATE_KEY: z.string(),
-  GITHUB_CLIENT_ID: z.string(),
-  GITHUB_CLIENT_SECRET: z.string(),
+  GITHUB_CLIENT_ID: z.string().optional(), // Opciono - samo ako koristiš OAuth App
+  GITHUB_CLIENT_SECRET: z.string().optional(), // Opciono - samo ako koristiš OAuth App
   GITHUB_WEBHOOK_SECRET: z.string(),
 
   // OpenAI

@@ -9,16 +9,62 @@
     </mat-card-header>
 
     <mat-card-content>
-      <p class="description">
-        Connect your GitHub account to start automated code reviews and security analysis.
-      </p>
-    </mat-card-content>
+      <!-- GitHub OAuth - Main Option -->
+      <div class="main-login-section">
+        <p class="description">
+          Connect your GitHub account to start automated code reviews and security analysis.
+        </p>
+        <button mat-raised-button color="primary" (click)="loginWithGitHub()" class="full-width github-button">
+          <mat-icon>code</mat-icon>
+          Sign in with GitHub
+        </button>
+      </div>
 
-    <mat-card-actions>
-      <button mat-raised-button color="primary" (click)="loginWithGitHub()" class="github-button">
-        <mat-icon>code</mat-icon>
-        Sign in with GitHub
-      </button>
-    </mat-card-actions>
+      <!-- Admin Login Form (shown when showAdminLogin is true) -->
+      <div *ngIf="showAdminLogin" class="admin-login-section">
+        <mat-divider class="divider">
+          <span>Admin Login</span>
+        </mat-divider>
+
+        <form [formGroup]="loginForm" (ngSubmit)="onLogin()">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Username or Email</mat-label>
+            <input matInput formControlName="username" placeholder="Enter your username or email" />
+            <mat-icon matPrefix>person</mat-icon>
+            <mat-error *ngIf="loginForm.get('username')?.hasError('required')">
+              Username or email is required
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Password</mat-label>
+            <input matInput type="password" formControlName="password" placeholder="Enter your password" />
+            <mat-icon matPrefix>lock</mat-icon>
+            <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
+              Password is required
+            </mat-error>
+          </mat-form-field>
+
+          <div *ngIf="loginError" class="error-message">
+            <mat-icon>error</mat-icon>
+            {{ loginError }}
+          </div>
+
+          <button mat-raised-button color="primary" type="submit" [disabled]="loginForm.invalid || loading" class="full-width login-button">
+            <mat-icon *ngIf="!loading">login</mat-icon>
+            <mat-spinner *ngIf="loading" diameter="20" class="inline-spinner"></mat-spinner>
+            <span>{{ loading ? 'Logging in...' : 'Login' }}</span>
+          </button>
+        </form>
+      </div>
+    </mat-card-content>
   </mat-card>
+
+  <!-- Admin Login Link - Bottom Right -->
+  <div class="admin-login-link">
+    <button mat-button (click)="toggleAdminLogin()" class="admin-link-button">
+      <mat-icon>admin_panel_settings</mat-icon>
+      <span>Admin Login</span>
+    </button>
+  </div>
 </div>

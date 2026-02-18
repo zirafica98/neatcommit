@@ -3,144 +3,216 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  padding: 20px;
+  padding: 2rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-    background-size: 50px 50px;
-    animation: float 20s infinite linear;
-  }
-  
-  @keyframes float {
-    0% {
-      transform: translate(0, 0);
-    }
-    100% {
-      transform: translate(50px, 50px);
-    }
-  }
 }
 
 .login-card {
-  max-width: 440px;
   width: 100%;
-  text-align: center;
-  background: var(--bg-glass) !important;
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
-  animation: fadeIn 0.6s ease-out;
-  position: relative;
-  z-index: 1;
-  border-radius: 24px !important;
+  max-width: 450px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+
+  mat-card-header {
+    text-align: center;
+    padding: 2rem 2rem 1rem;
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #1a1a1a;
+
+      mat-icon {
+        font-size: 2rem;
+        width: 2rem;
+        height: 2rem;
+        color: #667eea;
+      }
+    }
+
+    mat-card-subtitle {
+      margin-top: 0.5rem;
+      color: #666;
+      font-size: 1rem;
+    }
+  }
+
+  mat-card-content {
+    padding: 1.5rem 2rem 2rem;
+  }
 }
 
-mat-card-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 32px;
-  padding: 32px 24px 0 24px;
+.full-width {
+  width: 100%;
+  margin-bottom: 1rem;
 }
 
-mat-card-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  font-size: 32px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  
-  mat-icon {
-    font-size: 36px;
-    width: 36px;
-    height: 36px;
+mat-form-field {
+  width: 100%;
+
+  mat-icon[matPrefix] {
+    margin-right: 0.5rem;
     color: #667eea;
   }
 }
 
-mat-card-subtitle {
-  font-size: 18px;
-  color: #666;
-  font-weight: 400;
-}
-
-.description {
-  margin: 24px 0 32px 0;
-  color: #666;
-  line-height: 1.6;
-  font-size: 15px;
-  padding: 0 8px;
-}
-
-.github-button {
-  width: 100%;
-  padding: 18px;
-  font-size: 16px;
+.login-button {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  font-size: 1rem;
   font-weight: 600;
+
+  mat-icon,
+  mat-spinner {
+    margin-right: 0.5rem;
+  }
+
+  .inline-spinner {
+    display: inline-block;
+    margin-right: 0.5rem;
+  }
+}
+
+.error-message {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 12px;
-  border-radius: 14px;
-  background: var(--primary-gradient);
-  color: white;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  letter-spacing: 0.5px;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 8px;
+  font-size: 0.9rem;
+
+  mat-icon {
+    font-size: 1.25rem;
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+}
+
+.toggle-section {
+  text-align: center;
+  margin: 1.5rem 0;
+
+  .toggle-button {
+    color: #667eea;
+    font-size: 0.9rem;
+
+    strong {
+      font-weight: 600;
+    }
+  }
+}
+
+.divider {
+  margin: 2rem 0;
   position: relative;
-  overflow: hidden;
-  
+  text-align: center;
+
   &::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e0e0e0;
   }
-  
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.6);
-    
-    &::before {
-      left: 100%;
-    }
-  }
-  
-  &:active {
-    transform: translateY(-1px);
-  }
-  
-  mat-icon {
-    font-size: 24px;
-    width: 24px;
-    height: 24px;
-    transition: transform 0.3s ease;
-  }
-  
-  &:hover mat-icon {
-    transform: rotate(360deg);
+
+  span {
+    position: relative;
+    background: white;
+    padding: 0 1rem;
+    color: #999;
+    font-size: 0.875rem;
   }
 }
 
-mat-card-actions {
-  padding: 0 24px 32px 24px;
+.description {
+  text-align: center;
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.github-button {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  font-size: 1rem;
+  border: 2px solid #e0e0e0;
+
+  mat-icon {
+    margin-right: 0.5rem;
+  }
+
+  &:hover {
+    background: #f5f5f5;
+    border-color: #667eea;
+  }
+}
+
+.main-login-section {
+  margin-bottom: 1rem;
+}
+
+.admin-login-section {
+  margin-top: 1.5rem;
+}
+
+.admin-login-link {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+
+  .admin-link-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 24px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+
+    mat-icon {
+      font-size: 1.125rem;
+      width: 1.125rem;
+      height: 1.125rem;
+    }
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+      color: rgba(255, 255, 255, 1);
+      transform: translateY(-2px);
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .login-container {
+    padding: 1rem;
+  }
+
+  .login-card {
+    mat-card-header {
+      padding: 1.5rem 1.5rem 0.75rem;
+
+      mat-card-title {
+        font-size: 1.5rem;
+      }
+    }
+
+    mat-card-content {
+      padding: 1rem 1.5rem 1.5rem;
+    }
+  }
 }

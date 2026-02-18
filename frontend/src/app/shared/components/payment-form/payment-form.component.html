@@ -14,7 +14,53 @@
     <mat-card-content>
       <div class="plan-summary">
         <h3>{{ plan.name }} Plan</h3>
-        <p class="price">${{ plan.price }}<span class="interval">/{{ plan.interval }}</span></p>
+        <p class="price" *ngIf="finalPrice === plan.price">
+          ${{ plan.price }}<span class="interval">/{{ plan.interval }}</span>
+        </p>
+        <p class="price" *ngIf="finalPrice !== plan.price">
+          <span class="original-price">${{ plan.price }}</span>
+          <span class="discounted-price">${{ finalPrice.toFixed(2) }}</span>
+          <span class="interval">/{{ plan.interval }}</span>
+          <span class="discount-badge" *ngIf="promoCodeDiscount > 0">
+            -{{ promoCodeDiscount }}% OFF
+          </span>
+        </p>
+      </div>
+
+      <!-- Promo Code Section -->
+      <div class="promo-code-section">
+        <mat-form-field appearance="outline" class="promo-code-field">
+          <mat-label>Promo Code</mat-label>
+          <input
+            matInput
+            [(ngModel)]="promoCode"
+            (blur)="validatePromoCode()"
+            (keyup.enter)="validatePromoCode()"
+            placeholder="Enter promo code"
+            [disabled]="promoCodeValidating"
+          />
+          <mat-icon matPrefix>local_offer</mat-icon>
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="validatePromoCode()"
+            [disabled]="promoCodeValidating || !promoCode"
+            *ngIf="!promoCodeValid"
+          >
+            <mat-icon>check_circle</mat-icon>
+          </button>
+          <mat-icon matSuffix *ngIf="promoCodeValid && !promoCodeValidating">check_circle</mat-icon>
+          <mat-spinner *ngIf="promoCodeValidating" matSuffix diameter="20"></mat-spinner>
+        </mat-form-field>
+        <div class="promo-code-message" *ngIf="promoCodeError">
+          <mat-icon>error</mat-icon>
+          <span>{{ promoCodeError }}</span>
+        </div>
+        <div class="promo-code-message success" *ngIf="promoCodeValid && !promoCodeError">
+          <mat-icon>check_circle</mat-icon>
+          <span>Promo code applied! {{ promoCodeDiscount }}% discount</span>
+        </div>
       </div>
 
       <form [formGroup]="paymentForm" (ngSubmit)="onSubmit()">

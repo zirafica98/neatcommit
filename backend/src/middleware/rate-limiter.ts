@@ -4,7 +4,7 @@
  * Zaštita API-ja od preopterećenja i DDoS napada
  */
 
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response } from 'express';
 import { logger } from '../utils/logger';
 import env from '../config/env';
@@ -24,8 +24,8 @@ export const apiLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req: Request) => {
-    // Preskoči subscription rute (imaju svoj limiter)
-    return req.path.startsWith('/subscription');
+    // Preskoči subscription i auth rute (imaju svoj limiter)
+    return req.path.startsWith('/subscription') || req.path.startsWith('/auth');
   },
   handler: (req: Request, res: Response) => {
     logger.warn('Rate limit exceeded', {
@@ -70,17 +70,21 @@ export const subscriptionLimiter = rateLimit({
 
 /**
  * Strict rate limiter za auth endpoints
- * - 5 requests per 15 minutes po IP adresi
+ * - Development: 100 requests per 15 minutes (viši limit za development)
+ * - Production: 20 requests per 15 minutes po IP adresi (zaštita od brute force)
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minuta
-  max: 5, // 5 zahteva po IP-u (zaštita od brute force)
+  max: env.NODE_ENV === 'development' ? 100 : 20, // Viši limit u development modu
   message: {
     error: 'Too many authentication attempts, please try again later.',
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // Fix za IPv6 problem - koristi ipKeyGenerator helper
+  keyGenerator: (req) => ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown'),
   handler: (req: Request, res: Response) => {
+    console.log('🔴 AUTH RATE LIMIT HANDLER CALLED', { ip: req.ip, path: req.path });
     logger.warn('Auth rate limit exceeded', {
       ip: req.ip,
       path: req.path,
@@ -146,7 +150,10 @@ export const documentationLimiter = rateLimit({
         // Fallback na IP ako token nije validan
       }
     }
-    return `doc-gen:ip:${req.ip || 'unknown'}`;
+    // Koristi ipKeyGenerator za IP adresu
+    // ipKeyGenerator je funkcija koja prima Request i vraća string
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    return `doc-gen:ip:${ip}`;
   },
   handler: (req: Request, res: Response) => {
     logger.warn('Documentation generation rate limit exceeded', {

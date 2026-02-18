@@ -18,7 +18,12 @@ import {
   PLAN_LIMITS,
   PlanType,
 } from '../../services/subscription.service';
+import {
+  validatePromoCode,
+  incrementPromoCodeUsage,
+} from '../../services/promo-code.service';
 import { logger } from '../../utils/logger';
+import prisma from '../../config/database';
 
 const router = Router();
 
@@ -259,6 +264,38 @@ router.post('/create', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/subscription/validate-promo-code
+ * Validira promo code i vraća informacije o popustu
+ */
+router.post('/validate-promo-code', async (req: Request, res: Response) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({ error: 'Promo code is required' });
+    }
+
+    const validation = await validatePromoCode(code);
+
+    if (!validation.valid) {
+      return res.status(400).json({
+        valid: false,
+        error: validation.error,
+      });
+    }
+
+    return res.json({
+      valid: true,
+      code: validation.code,
+      discountPercentage: validation.discountPercentage,
+    });
+  } catch (error) {
+    logger.error('Failed to validate promo code:', error);
+    return res.status(500).json({ error: 'Failed to validate promo code' });
+  }
+});
+
+/**
  * POST /api/subscription/upgrade
  * Upgrade subscription plan (sa fake payment za demo)
  */
@@ -276,7 +313,7 @@ router.post('/upgrade', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    const { planType, paymentData, isDemo = false } = req.body;
+    const { planType, paymentData, isDemo = false, promoCode } = req.body;
 
     if (!planType || !['FREE', 'PRO', 'ENTERPRISE'].includes(planType)) {
       return res.status(400).json({ error: 'Invalid plan type' });
@@ -294,6 +331,31 @@ router.post('/upgrade', async (req: Request, res: Response) => {
       }
     }
 
+    // Validiraj promo code ako je prosleđen
+    let promoCodeId: string | null = null;
+    let discountPercentage = 0;
+    
+    if (promoCode) {
+      const validation = await validatePromoCode(promoCode);
+      
+      if (!validation.valid) {
+        return res.status(400).json({
+          error: validation.error || 'Invalid promo code',
+        });
+      }
+
+      discountPercentage = validation.discountPercentage || 0;
+      
+      // Pronađi promo code u bazi da dobijemo ID
+      const promoCodeRecord = await prisma.promoCode.findUnique({
+        where: { code: promoCode.toUpperCase() },
+      });
+
+      if (promoCodeRecord) {
+        promoCodeId = promoCodeRecord.id;
+      }
+    }
+
     // Za demo verziju, preskoči payment validaciju
     if (!isDemo && planType !== 'FREE') {
       // TODO: Validacija payment podataka (Stripe integracija)
@@ -307,15 +369,27 @@ router.post('/upgrade', async (req: Request, res: Response) => {
     let subscription;
     
     if (existingSubscription) {
-      subscription = await updateSubscription(payload.userId, planType as PlanType);
+      subscription = await updateSubscription(payload.userId, planType as PlanType, promoCodeId);
     } else {
-      subscription = await createSubscription(payload.userId, planType as PlanType, isDemo);
+      subscription = await createSubscription(payload.userId, planType as PlanType, isDemo, promoCodeId);
+    }
+
+    // Povećaj broj korišćenja promo code-a ako je korišćen
+    if (promoCodeId) {
+      try {
+        await incrementPromoCodeUsage(promoCode || '');
+      } catch (error) {
+        logger.warn('Failed to increment promo code usage:', error);
+        // Ne prekidaj proces ako ne uspe da ažurira usage
+      }
     }
 
     logger.info('Subscription upgraded', {
       userId: payload.userId,
       planType,
       isDemo,
+      promoCode: promoCode || null,
+      discountPercentage,
     });
 
     return res.json({
@@ -327,6 +401,8 @@ router.post('/upgrade', async (req: Request, res: Response) => {
         currentPeriodStart: subscription.currentPeriodStart,
         currentPeriodEnd: subscription.currentPeriodEnd,
       },
+      discountApplied: discountPercentage > 0,
+      discountPercentage,
     });
   } catch (error: any) {
     logger.error('Failed to upgrade subscription:', error);

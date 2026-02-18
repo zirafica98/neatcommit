@@ -12,11 +12,13 @@ datasource db {
 
 model User {
   id            String    @id @default(cuid())
-  githubId      Int       @unique
-  username      String
-  email         String?
+  githubId      Int?      @unique // Opciono - samo za GitHub OAuth korisnike
+  username      String    @unique
+  email         String?   @unique
+  password      String?   // Hashed password - samo za password-based login
   avatarUrl     String?
   name          String?
+  role          String    @default("USER") // USER, ADMIN
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -26,6 +28,9 @@ model User {
   subscription  Subscription?
 
   @@index([githubId])
+  @@index([username])
+  @@index([email])
+  @@index([role])
   @@map("users")
 }
 
@@ -42,15 +47,37 @@ model Subscription {
   stripeCustomerId      String?
   stripePriceId         String?
   cancelAtPeriodEnd     Boolean  @default(false)
+  promoCodeId           String?  // Promo code koji je korišćen za ovu subscription
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  promoCode             PromoCode? @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([planType])
   @@index([status])
+  @@index([promoCodeId])
   @@map("subscriptions")
+}
+
+model PromoCode {
+  id                    String   @id @default(cuid())
+  code                  String   @unique // Promo code (npr. "KUM")
+  discountPercentage    Int      // Popust u procentima (0-100)
+  isActive              Boolean  @default(true)
+  maxUses               Int?     // Maksimalan broj korišćenja (null = unlimited)
+  currentUses           Int      @default(0) // Trenutni broj korišćenja
+  validFrom             DateTime? // Datum od kada je validan
+  validUntil            DateTime? // Datum do kada je validan
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  subscriptions         Subscription[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("promo_codes")
 }
 
 model Installation {

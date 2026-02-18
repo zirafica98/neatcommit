@@ -70,10 +70,10 @@ try {
     webhooks: {
       secret: env.GITHUB_WEBHOOK_SECRET,
     },
-    oauth: {
+    oauth: env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET ? {
       clientId: env.GITHUB_CLIENT_ID,
       clientSecret: env.GITHUB_CLIENT_SECRET,
-    },
+    } : undefined,
   });
   logger.info('✅ GitHub App initialized successfully');
 } catch (error) {

@@ -56,6 +56,15 @@ export async function getUserRepositories(userId: string): Promise<UserRepositor
       return [];
     }
 
+    // Proveri da li korisnik ima GitHub ID
+    if (!user.githubId) {
+      logger.warn('User does not have GitHub ID - cannot fetch repositories', {
+        userId,
+        username: user.username,
+      });
+      return [];
+    }
+
     // Pronađi sve installation-e za korisnika (po userId) ILI po GitHub account ID
     let installations = await prisma.installation.findMany({
       where: {
@@ -80,9 +89,16 @@ export async function getUserRepositories(userId: string): Promise<UserRepositor
         },
       });
 
+      logger.info('Found installations by accountId', {
+        userId,
+        githubId: user.githubId,
+        installationsCount: installationsByAccount.length,
+        installationIds: installationsByAccount.map(i => i.installationId),
+      });
+
       if (installationsByAccount.length > 0) {
         // Poveži instalacije sa korisnikom
-        await prisma.installation.updateMany({
+        const updated = await prisma.installation.updateMany({
           where: {
             accountId: user.githubId,
             userId: null, // Samo one koje nisu već povezane
@@ -95,7 +111,8 @@ export async function getUserRepositories(userId: string): Promise<UserRepositor
         logger.info('Linked installations to user', {
           userId,
           githubId: user.githubId,
-          linkedCount: installationsByAccount.length,
+          linkedCount: updated.count,
+          totalFound: installationsByAccount.length,
         });
 
         // Ponovo učitaj instalacije
@@ -106,6 +123,11 @@ export async function getUserRepositories(userId: string): Promise<UserRepositor
               { accountId: user.githubId },
             ],
           },
+        });
+      } else {
+        logger.warn('No installations found by accountId', {
+          userId,
+          githubId: user.githubId,
         });
       }
     }

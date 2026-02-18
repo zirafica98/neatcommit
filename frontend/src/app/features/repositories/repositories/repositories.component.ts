@@ -56,10 +56,10 @@ export class RepositoriesComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading repositories:', error);
-        this.error = 'Failed to load repositories';
+        this.error = error.error?.error || 'Failed to load repositories';
         this.loading = false;
-        this.snackBar.open('Failed to load repositories', 'Close', {
-          duration: 5000,
+        this.snackBar.open(this.error || 'Failed to load repositories', 'Close', {
+          duration: 7000,
         });
       },
     });

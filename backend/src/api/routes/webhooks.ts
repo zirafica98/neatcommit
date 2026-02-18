@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { analysisQueue } from '../../config/queue';
 import { logger } from '../../utils/logger';
 import prisma from '../../config/database';
+import env from '../../config/env';
 
 const router = Router();
 
@@ -50,26 +51,46 @@ router.post('/github', async (req: Request, res: Response) => {
       logger.warn('⚠️ Missing x-github-event header, detected from body', { detectedEvent: event });
     }
 
+    // Za webhook verification, treba nam raw body (Buffer)
+    // Raw body je sačuvan u middleware-u pre express.json()
+    const rawBody = (req as any).rawBody;
+    const parsedBody = (req as any).parsedBody || req.body;
+    
     logger.info('📡 Webhook received', {
       event,
       deliveryId,
-      bodyKeys: Object.keys(req.body || {}),
+      hasRawBody: !!rawBody,
+      rawBodyType: rawBody ? (Buffer.isBuffer(rawBody) ? 'Buffer' : typeof rawBody) : 'none',
+      bodyKeys: Object.keys(parsedBody || {}),
     });
 
     // Verifikuj webhook signature za bezbednost
     const signature = req.headers['x-hub-signature-256'] as string;
     
-    // Za webhook verification, treba nam raw body
-    // Express.json() već je parsirao body, ali možemo da koristimo req.body kao string
-    // GitHub šalje JSON, tako da možemo da koristimo JSON.stringify(req.body)
-    // ALI, bolje je da koristimo raw body ako je dostupan (req.rawBody)
-    const rawBody = (req as any).rawBody || JSON.stringify(req.body);
+    if (!rawBody) {
+      logger.error('❌ Raw body not available for webhook verification', {
+        event,
+        deliveryId,
+        hasBody: !!req.body,
+      });
+      return res.status(400).json({ error: 'Raw body required for webhook verification' });
+    }
     
     // Importuj verification utility
     const { verifyGitHubWebhookSignature } = await import('../../utils/webhook-verification');
     
+    // Raw body je već Buffer, koristi ga direktno
+    // VAŽNO: Ne menjaj Buffer na bilo koji način - koristi ga tačno kako je sačuvan
+    const bodyForVerification = Buffer.isBuffer(rawBody) ? rawBody : Buffer.from(rawBody);
+    
+    logger.debug('Verifying webhook signature', {
+      rawBodyIsBuffer: Buffer.isBuffer(rawBody),
+      bodyLength: bodyForVerification.length,
+      signaturePrefix: signature ? signature.substring(0, 20) : 'missing',
+    });
+    
     const isValid = verifyGitHubWebhookSignature(
-      typeof rawBody === 'string' ? rawBody : Buffer.from(rawBody),
+      bodyForVerification,
       signature
     );
     
@@ -357,9 +378,33 @@ async function handleInstallationCreated(installation: any, sender: any, reposit
       return;
     }
 
-    // Kreiraj ili ažuriraj korisnika ako postoji sender
-    let user = null;
-    if (sender && sender.id) {
+    // PRVO: Pokušaj da pronađeš korisnika po installation.account.id (vlasnik account-a)
+    // Ovo je važno jer installation.account.id je pravi vlasnik account-a na koji je App instaliran
+    let user = await prisma.user.findUnique({
+      where: { githubId: installation.account.id },
+    });
+
+    // Ako ne postoji korisnik sa installation.account.id, kreiraj ga
+    if (!user && installation.account.id) {
+      user = await prisma.user.create({
+        data: {
+          githubId: installation.account.id,
+          username: installation.account.login || 'unknown',
+          email: null, // Email nije dostupan u installation.account
+          avatarUrl: installation.account.avatar_url || null,
+          name: installation.account.name || null,
+        },
+      });
+      logger.info('👤 User created from installation.account', { 
+        userId: user.id, 
+        githubId: installation.account.id,
+        username: installation.account.login,
+      });
+    }
+
+    // FALLBACK: Ako i dalje nema korisnika, pokušaj sa sender.id (osoba koja je instalirala)
+    // Ovo je korisno ako je App instaliran na organizaciju, a sender je član
+    if (!user && sender && sender.id) {
       user = await prisma.user.findUnique({
         where: { githubId: sender.id },
       });
@@ -375,11 +420,14 @@ async function handleInstallationCreated(installation: any, sender: any, reposit
             name: sender.name || null,
           },
         });
-        logger.info('👤 User created', { userId: user.id, githubId: sender.id });
+        logger.info('👤 User created from sender', { userId: user.id, githubId: sender.id });
       }
     }
 
     // Kreiraj instalaciju
+    // VAŽNO: Ako postoji korisnik sa githubId === installation.account.id, poveži ga
+    // Ako ne postoji, installation će biti kreiran sa userId: null, ali će se kasnije
+    // automatski povezati kada korisnik loguje (u getUserRepositories funkciji)
     await prisma.installation.upsert({
       where: { installationId: installation.id },
       create: {
@@ -388,13 +436,15 @@ async function handleInstallationCreated(installation: any, sender: any, reposit
         accountType: installation.account.type || 'User',
         accountLogin: installation.account.login || 'unknown',
         targetType: installation.target_type || 'User',
-        userId: user?.id || null,
+        userId: user?.id || null, // Poveži sa korisnikom ako postoji
       },
       update: {
         accountId: installation.account.id,
         accountType: installation.account.type || 'User',
         accountLogin: installation.account.login || 'unknown',
         targetType: installation.target_type || 'User',
+        // Ažuriraj userId samo ako je null (ne prepisuj postojeću vezu)
+        ...(user && { userId: user.id }),
         updatedAt: new Date(),
       },
     });
@@ -455,8 +505,22 @@ async function handleInstallationCreated(installation: any, sender: any, reposit
     logger.info('💾 Installation saved to database', {
       installationId: installation.id,
       userId: user?.id || null,
+      accountId: installation.account.id,
       accountLogin: installation.account.login,
+      accountType: installation.account.type,
+      linkedToUser: !!user,
     });
+
+    // Ako je korisnik kreiran ili povezan, logujemo ga
+    // Korisnik će se automatski logovati kada dođe na callback URL nakon instalacije
+    if (user) {
+      logger.info('✅ User ready for authentication via installation', {
+        userId: user.id,
+        username: user.username,
+        installationId: installation.id,
+        completeUrl: `${env.API_URL}/api/auth/github/complete?installation_id=${installation.id}`,
+      });
+    }
   } catch (error) {
     logger.error('Failed to save installation:', error);
     throw error;

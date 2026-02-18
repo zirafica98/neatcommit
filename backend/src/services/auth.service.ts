@@ -13,8 +13,9 @@ import { User } from '@prisma/client';
 
 export interface TokenPayload {
   userId: string;
-  githubId: number;
+  githubId?: number; // Optional - može biti undefined za password-based users
   username: string;
+  role?: string; // USER, ADMIN
 }
 
 /**
@@ -23,8 +24,9 @@ export interface TokenPayload {
 export function generateAccessToken(user: User): string {
   const payload: TokenPayload = {
     userId: user.id,
-    githubId: user.githubId,
+    githubId: user.githubId || undefined,
     username: user.username,
+    role: user.role || 'USER',
   };
 
   return jwt.sign(payload, env.JWT_SECRET, {
@@ -38,7 +40,7 @@ export function generateAccessToken(user: User): string {
 export function generateRefreshToken(user: User): string {
   const payload: TokenPayload = {
     userId: user.id,
-    githubId: user.githubId,
+    githubId: user.githubId || undefined,
     username: user.username,
   };
 

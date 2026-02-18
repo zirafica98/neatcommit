@@ -9,6 +9,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { map } from 'rxjs/operators';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 
@@ -40,6 +41,12 @@ export class MainLayoutComponent {
 
   get currentUser$() {
     return this.authService.currentUser$;
+  }
+
+  get isAdmin$() {
+    return this.authService.currentUser$.pipe(
+      map((user) => user?.role === 'ADMIN')
+    );
   }
 
   get isDarkTheme$() {

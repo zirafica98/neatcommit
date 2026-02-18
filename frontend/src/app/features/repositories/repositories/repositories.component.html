@@ -29,7 +29,15 @@
     <div *ngIf="repositories.length === 0" class="empty-state">
       <mat-icon>folder</mat-icon>
       <h3>No repositories found</h3>
-      <p>Repositories will be automatically added when you open a Pull Request in a repository where the GitHub App is installed.</p>
+      <p *ngIf="error && error.includes('GitHub account')" class="error-message">
+        {{ error }}
+      </p>
+      <p *ngIf="!error || !error.includes('GitHub account')">
+        Repositories will be automatically added when you open a Pull Request in a repository where the GitHub App is installed.
+      </p>
+      <p *ngIf="!error || !error.includes('GitHub account')" class="help-text">
+        If you've already installed the GitHub App, make sure you're logged in with the same GitHub account.
+      </p>
       <a mat-raised-button color="primary" href="https://github.com/apps/neatcommit" target="_blank">
         <mat-icon>add</mat-icon>
         Install GitHub App

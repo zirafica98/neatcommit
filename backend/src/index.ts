@@ -15,6 +15,9 @@ initSentry();
 
 const app: Express = express();
 
+// Trust proxy - potrebno za rate limiter kada se koristi X-Forwarded-For header
+app.set('trust proxy', true);
+
 // Sentry setup (samo u production) - middleware se dodaje kasnije u error handler sekciji
 
 // Middleware
@@ -25,12 +28,36 @@ app.use(
   })
 );
 
-app.use(express.json());
+// express.json() sa verify opcijom da sačuva raw body za webhook rute
+// Ovo je najbolje rešenje jer sačuva raw body pre parsiranja
+app.use(express.json({
+  verify: (req: any, _res, buf, _encoding) => {
+    // Ako je webhook ruta, sačuvaj raw body kao Buffer
+    // Proveri i po path i po originalUrl jer path može biti undefined u verify callback-u
+    const isWebhook = (req.path && req.path.startsWith('/webhook')) || 
+                      (req.originalUrl && req.originalUrl.startsWith('/webhook')) ||
+                      (req.url && req.url.startsWith('/webhook'));
+    if (isWebhook) {
+      req.rawBody = buf; // buf je već Buffer
+      logger.debug('Raw body saved for webhook', {
+        path: req.path,
+        originalUrl: req.originalUrl,
+        url: req.url,
+        bufferLength: buf.length,
+      });
+    }
+  }
+}));
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  logger.info(`${req.method} ${req.path}`, {
+  logger.info(`REQUEST RECEIVED: ${req.method} ${req.path}`, {
+    method: req.method,
+    path: req.path,
+    url: req.url,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
     ip: req.ip,
     userAgent: req.get('user-agent'),
   });
@@ -41,7 +68,21 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 import { apiLimiter, authLimiter, webhookLimiter, subscriptionLimiter } from './middleware/rate-limiter';
 
 // Apply general rate limiting to all API routes
-app.use('/api', apiLimiter);
+// apiLimiter ima skip funkciju koja preskače /auth i /subscription rute
+app.use('/api', (req, res, next) => {
+  logger.info(`API middleware called: ${req.path}`, {
+    path: req.path,
+    url: req.url,
+    originalUrl: req.originalUrl,
+  });
+  // Proveri da li je auth ruta - ako jeste, preskoči apiLimiter
+  if (req.path.startsWith('/auth')) {
+    logger.info('Skipping apiLimiter for auth route');
+    return next();
+  }
+  logger.info('Applying apiLimiter');
+  return apiLimiter(req, res, next);
+});
 
 // Health check (bez rate limiting)
 app.get('/health', async (_req: Request, res: Response) => {
@@ -174,9 +215,41 @@ import webhookRoutes from './api/routes/webhooks';
 app.use('/webhook', webhookLimiter, webhookRoutes); // Rate limiting za webhook-ove
 
 // Database preview endpoints (for development)
-app.get('/api/reviews', async (_req: Request, res: Response) => {
+app.get('/api/reviews', async (req: Request, res: Response) => {
   try {
+    // Ekstraktuj userId iz JWT tokena
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { verifyAccessToken } = await import('./services/auth.service');
+      const payload = verifyAccessToken(token);
+      if (payload) {
+        userId = payload.userId;
+      }
+    }
+
+    // Ako nema userId, vrati prazan niz (ili error)
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Pronađi sve installations za ovog korisnika
+    const userInstallations = await prisma.installation.findMany({
+      where: { userId: userId },
+      select: { id: true },
+    });
+
+    const installationIds = userInstallations.map((inst) => inst.id);
+
+    // Filtriraj reviews samo za installations koje pripadaju ovom korisniku
     const reviews = await prisma.review.findMany({
+      where: {
+        installationId: {
+          in: installationIds,
+        },
+      },
       take: 20,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -238,6 +311,25 @@ app.get('/api/reviews', async (_req: Request, res: Response) => {
 app.get('/api/reviews/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // Ekstraktuj userId iz JWT tokena
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { verifyAccessToken } = await import('./services/auth.service');
+      const payload = verifyAccessToken(token);
+      if (payload) {
+        userId = payload.userId;
+      }
+    }
+
+    // Ako nema userId, vrati error
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
     const review = await prisma.review.findUnique({
       where: { id },
       include: {
@@ -254,6 +346,11 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
 
     if (!review) {
       return res.status(404).json({ error: 'Review not found' });
+    }
+
+    // Proveri da li review pripada korisniku
+    if (review.installation && review.installation.userId !== userId) {
+      return res.status(403).json({ error: 'Forbidden: This review does not belong to you' });
     }
 
     return res.json({
@@ -310,10 +407,55 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
 
 app.get('/api/issues', async (req: Request, res: Response) => {
   try {
+    // Ekstraktuj userId iz JWT tokena
+    const authHeader = req.headers.authorization;
+    let userId: string | null = null;
+
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const { verifyAccessToken } = await import('./services/auth.service');
+      const payload = verifyAccessToken(token);
+      if (payload) {
+        userId = payload.userId;
+      }
+    }
+
+    // Ako nema userId, vrati error
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Pronađi sve installations za ovog korisnika
+    const userInstallations = await prisma.installation.findMany({
+      where: { userId: userId },
+      select: { id: true },
+    });
+
+    const installationIds = userInstallations.map((inst) => inst.id);
+
+    // Pronađi sve reviews za ovog korisnika
+    const userReviews = await prisma.review.findMany({
+      where: {
+        installationId: {
+          in: installationIds,
+        },
+      },
+      select: { id: true },
+    });
+
+    const reviewIds = userReviews.map((r) => r.id);
+
     const { severity, limit = '50' } = req.query;
+    
+    // Filtriraj issues samo za reviews ovog korisnika
     const issues = await prisma.issue.findMany({
+      where: {
+        reviewId: {
+          in: reviewIds,
+        },
+        ...(severity ? { severity: severity as string } : {}),
+      },
       take: parseInt(limit as string, 10),
-      where: severity ? { severity: severity as string } : undefined,
       orderBy: [
         { severity: 'asc' },
         { createdAt: 'desc' },
@@ -353,33 +495,115 @@ app.get('/api/issues', async (req: Request, res: Response) => {
 });
 
 // Dashboard stats endpoint
-app.get('/api/dashboard/stats', async (_req: Request, res: Response) => {
+app.get('/api/dashboard/stats', async (req: Request, res: Response) => {
   try {
-    // Get total reviews count
-    const totalReviews = await prisma.review.count();
+    // Ekstraktuj userId iz JWT tokena
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    // Get total issues count
-    const totalIssues = await prisma.issue.count();
+    const token = authHeader.substring(7);
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(token);
 
-    // Get issues by severity
+    if (!payload || !payload.userId) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Pronađi sve installations za ovog korisnika
+    const userInstallations = await prisma.installation.findMany({
+      where: { userId: payload.userId },
+      select: { id: true },
+    });
+
+    const installationIds = userInstallations.map((inst) => inst.id);
+
+    // Ako korisnik nema installations, vrati prazne podatke
+    if (installationIds.length === 0) {
+      return res.json({
+        totalReviews: 0,
+        totalIssues: 0,
+        criticalIssues: 0,
+        highIssues: 0,
+        mediumIssues: 0,
+        lowIssues: 0,
+        averageScore: 0,
+        recentReviews: [],
+      });
+    }
+
+    // Get total reviews count - samo za ovog korisnika
+    const totalReviews = await prisma.review.count({
+      where: {
+        installationId: {
+          in: installationIds,
+        },
+      },
+    });
+
+    // Get total issues count - samo za reviews ovog korisnika
+    const userReviews = await prisma.review.findMany({
+      where: {
+        installationId: {
+          in: installationIds,
+        },
+      },
+      select: { id: true },
+    });
+
+    const reviewIds = userReviews.map((r) => r.id);
+
+    const totalIssues = await prisma.issue.count({
+      where: {
+        reviewId: {
+          in: reviewIds,
+        },
+      },
+    });
+
+    // Get issues by severity - samo za reviews ovog korisnika
     const criticalIssues = await prisma.issue.count({
-      where: { severity: 'CRITICAL' },
+      where: {
+        severity: 'CRITICAL',
+        reviewId: {
+          in: reviewIds,
+        },
+      },
     });
     const highIssues = await prisma.issue.count({
-      where: { severity: 'HIGH' },
+      where: {
+        severity: 'HIGH',
+        reviewId: {
+          in: reviewIds,
+        },
+      },
     });
     const mediumIssues = await prisma.issue.count({
-      where: { severity: 'MEDIUM' },
+      where: {
+        severity: 'MEDIUM',
+        reviewId: {
+          in: reviewIds,
+        },
+      },
     });
     const lowIssues = await prisma.issue.count({
-      where: { severity: 'LOW' },
+      where: {
+        severity: 'LOW',
+        reviewId: {
+          in: reviewIds,
+        },
+      },
     });
 
-    // Calculate average security score
+    // Calculate average security score - samo za reviews ovog korisnika
     const reviewsWithScore = await prisma.review.findMany({
       where: {
         status: 'completed',
         securityScore: { not: null },
+        installationId: {
+          in: installationIds,
+        },
       },
       select: {
         securityScore: true,
@@ -393,8 +617,13 @@ app.get('/api/dashboard/stats', async (_req: Request, res: Response) => {
         )
       : 0;
 
-    // Get recent reviews (last 5)
+    // Get recent reviews (last 5) - samo za ovog korisnika
     const recentReviews = await prisma.review.findMany({
+      where: {
+        installationId: {
+          in: installationIds,
+        },
+      },
       take: 5,
       orderBy: { createdAt: 'desc' },
       include: {
@@ -581,9 +810,9 @@ app.get('/api/repositories', async (req: Request, res: Response) => {
         where: { id: userId },
       });
 
-      if (user) {
+      if (user && user.githubId) {
         // Pronađi installation-e koje nisu povezane sa korisnikom ali imaju isti accountId
-        await prisma.installation.updateMany({
+        const updated = await prisma.installation.updateMany({
           where: {
             accountId: user.githubId,
             userId: null, // Nisu povezani
@@ -592,6 +821,14 @@ app.get('/api/repositories', async (req: Request, res: Response) => {
             userId: user.id,
           },
         });
+        
+        if (updated.count > 0) {
+          logger.info('Linked installations to user on repositories request', {
+            userId: user.id,
+            githubId: user.githubId,
+            linkedCount: updated.count,
+          });
+        }
       }
 
       const installations = await prisma.installation.findMany({
@@ -804,16 +1041,27 @@ app.post('/api/repositories/add', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    // Proveri da li korisnik ima GitHub ID
+    if (!user.githubId) {
+      return res.status(400).json({ 
+        error: 'This account does not have a GitHub account linked. Please login with GitHub OAuth to use repository features.' 
+      });
+    }
+
     // Pronađi installation za korisnika
     const installation = await prisma.installation.findFirst({
       where: {
-        userId: payload.userId,
-        accountId: user.githubId,
+        OR: [
+          { userId: payload.userId },
+          { accountId: user.githubId },
+        ],
       },
     });
 
     if (!installation) {
-      return res.status(404).json({ error: 'No GitHub App installation found for this user' });
+      return res.status(404).json({ 
+        error: 'No GitHub App installation found for this user. Please install the GitHub App from https://github.com/apps/neatcommit' 
+      });
     }
 
     // Proveri da li repozitorijum već postoji u bazi
@@ -927,7 +1175,40 @@ app.post('/api/repositories/:id/disable', async (req: Request, res: Response) =>
 
 // API routes with rate limiting
 import authRoutes from './api/routes/auth';
-app.use('/api/auth', authLimiter, authRoutes); // Strict rate limiting za auth
+logger.info('Setting up /api/auth routes with authLimiter');
+logger.info('Auth routes type: ' + typeof authRoutes);
+const routesStack = (authRoutes as any)?.stack?.map((layer: any) => ({
+  path: layer?.route?.path || 'no path',
+  method: layer?.route?.methods || 'no method',
+  name: layer?.name || 'unknown'
+}));
+logger.info('Auth routes stack: ' + JSON.stringify(routesStack));
+
+// Test da vidimo da li se middleware uopšte izvršava
+app.use('/api/auth', (req, _res, next) => {
+  logger.info(`AUTH MIDDLEWARE CALLED: ${req.method} ${req.path}`, {
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
+    url: req.url,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+  });
+  next();
+}, authLimiter, (req, _res, next) => {
+  logger.info(`After authLimiter, before routes: ${req.method} ${req.path}`, {
+    path: req.path,
+    url: req.url,
+    originalUrl: req.originalUrl,
+  });
+  next();
+}, authRoutes); // Strict rate limiting za auth
+
+// Test route to verify routing works
+app.post('/api/auth/test', (_req, res) => {
+  logger.info('TEST ROUTE CALLED');
+  res.json({ message: 'Test route works!' });
+});
 
 import documentationRoutes from './api/routes/documentation';
 // Rate limiting se primenjuje samo na generate endpoint unutar rute, ne na sve
@@ -943,6 +1224,10 @@ app.use('/api/export', apiLimiter, exportRoutes); // Export endpoints with rate 
 // Subscription routes
 import subscriptionRoutes from './api/routes/subscription';
 app.use('/api/subscription', subscriptionLimiter, subscriptionRoutes); // Subscription endpoints with relaxed rate limiting
+
+// Admin routes
+import adminRoutes from './api/routes/admin';
+app.use('/api/admin', adminRoutes); // Admin endpoints (zahtevaju admin role)
 
 
 // Sentry error handler (mora biti pre custom error handler-a)
@@ -971,6 +1256,13 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
 
 // 404 handler
 app.use((req: Request, res: Response) => {
+  logger.info(`404 HANDLER CALLED: ${req.method} ${req.path}`, {
+    method: req.method,
+    path: req.path,
+    url: req.url,
+    originalUrl: req.originalUrl,
+    baseUrl: req.baseUrl,
+  });
   res.status(404).json({
     error: 'Not found',
     path: req.path,
@@ -991,9 +1283,24 @@ async function startServer() {
     }
 
     app.listen(PORT, () => {
-      logger.info(`🚀 Server running on port ${PORT}`, {
+      logger.info(`Server running on port ${PORT}`, {
         environment: env.NODE_ENV,
         frontendUrl: env.FRONTEND_URL,
+      });
+      
+      // Log all registered routes
+      logger.info('Registered routes:');
+      app._router?.stack?.forEach((middleware: any) => {
+        if (middleware.route) {
+          logger.info(`  ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`);
+        } else if (middleware.name === 'router') {
+          logger.info(`  Router: ${middleware.regexp}`);
+          middleware.handle.stack?.forEach((handler: any) => {
+            if (handler.route) {
+              logger.info(`    ${Object.keys(handler.route.methods).join(', ').toUpperCase()} ${handler.route.path}`);
+            }
+          });
+        }
       });
     });
   } catch (error) {

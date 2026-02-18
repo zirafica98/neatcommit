@@ -1,0 +1,61 @@
+<div class="install-container">
+  <mat-card class="install-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>install_mobile</mat-icon>
+        Install GitHub App
+      </mat-card-title>
+      <mat-card-subtitle *ngIf="username">Welcome, {{ username }}! Complete your login by installing the GitHub App</mat-card-subtitle>
+      <mat-card-subtitle *ngIf="!username">Complete your login by installing the GitHub App</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="instructions">
+        <ol>
+          <li>
+            <strong>Install the GitHub App</strong>
+            <p>The installation page should have opened in a new tab. If not, click the button below.</p>
+          </li>
+          <li>
+            <strong>Select repositories</strong>
+            <p>Choose which repositories you want to connect to NeatCommit.</p>
+          </li>
+          <li>
+            <strong>Complete installation</strong>
+            <p>Click "Install" on GitHub to complete the installation.</p>
+          </li>
+          <li>
+            <strong>Wait for automatic detection</strong>
+            <p>We're automatically checking if you've completed the installation. You'll be redirected once it's done!</p>
+          </li>
+        </ol>
+      </div>
+
+      <div class="status" *ngIf="checking">
+        <mat-spinner [diameter]="30"></mat-spinner>
+        <p>Checking for installation...</p>
+      </div>
+
+      <div class="actions">
+        <button 
+          mat-raised-button 
+          color="primary" 
+          (click)="openInstallationPage()"
+          [disabled]="checking">
+          <mat-icon>open_in_new</mat-icon>
+          Open Installation Page
+        </button>
+
+        <button 
+          mat-raised-button 
+          color="accent" 
+          (click)="manualCheck()"
+          [disabled]="checking">
+          <mat-spinner *ngIf="checking" [diameter]="20" class="inline-spinner"></mat-spinner>
+          <mat-icon *ngIf="!checking">refresh</mat-icon>
+          Check Now
+        </button>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

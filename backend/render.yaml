@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: elementer-backend
+    env: node
+    plan: starter # ili free za početak
+    region: frankfurt # ili bilo koji drugi region (npr. oregon, singapore)
+    buildCommand: npm install && npm run build && npx prisma generate && npx prisma migrate deploy
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000 # Render automatski postavlja PORT, ali ovo je fallback
+      - key: DATABASE_URL
+        fromDatabase:
+          name: elementer-database
+          property: connectionString
+      - key: REDIS_HOST
+        fromService:
+          name: elementer-redis
+          type: redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          name: elementer-redis
+          type: redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          name: elementer-redis
+          type: redis
+          property: password
+      # Dodaj ostale environment variables kroz Render dashboard:
+      # - JWT_SECRET
+      # - JWT_REFRESH_SECRET
+      # - GITHUB_APP_ID
+      # - GITHUB_PRIVATE_KEY (ili koristi Secret Files)
+      # - GITHUB_CLIENT_ID
+      # - GITHUB_CLIENT_SECRET
+      # - GITHUB_WEBHOOK_SECRET
+      # - OPENAI_API_KEY
+      # - FRONTEND_URL
+      # - API_URL (ažuriraj nakon deploy-a!)
+
+databases:
+  - name: elementer-database
+    plan: starter # ili free za početak
+    databaseName: elementer
+    user: elementer
+
+redis:
+  - name: elementer-redis
+    plan: starter # ili free za početak
+    maxmemoryPolicy: allkeys-lru

@@ -1,0 +1,238 @@
+<div class="admin-container">
+  <div class="admin-header">
+    <h1>
+      <mat-icon>admin_panel_settings</mat-icon>
+      Admin Dashboard
+    </h1>
+  </div>
+
+  <div *ngIf="loading" class="loading-container">
+    <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+  </div>
+
+  <div *ngIf="!loading && stats" class="admin-content">
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+      <!-- Revenue -->
+      <mat-card class="stat-card revenue">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>attach_money</mat-icon>
+            Revenue
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-value">{{ formatCurrency(stats.revenue.total) }}</div>
+          <div class="stat-details">
+            <div class="stat-item">
+              <span class="label">This Month:</span>
+              <span class="value">{{ formatCurrency(stats.revenue.thisMonth) }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Last Month:</span>
+              <span class="value">{{ formatCurrency(stats.revenue.lastMonth) }}</span>
+            </div>
+            <div class="stat-breakdown">
+              <div class="breakdown-item">
+                <span>PRO:</span>
+                <strong>{{ formatCurrency(stats.revenue.byPlan.PRO) }}</strong>
+              </div>
+              <div class="breakdown-item">
+                <span>ENTERPRISE:</span>
+                <strong>{{ formatCurrency(stats.revenue.byPlan.ENTERPRISE) }}</strong>
+              </div>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Users -->
+      <mat-card class="stat-card users">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>people</mat-icon>
+            Users
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-value">{{ stats.users.total }}</div>
+          <div class="stat-details">
+            <div class="stat-item">
+              <span class="label">Active:</span>
+              <span class="value">{{ stats.users.active }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">New This Month:</span>
+              <span class="value">{{ stats.users.newThisMonth }}</span>
+            </div>
+            <div class="stat-breakdown">
+              <mat-chip-set>
+                <mat-chip>FREE: {{ stats.users.byPlan.FREE }}</mat-chip>
+                <mat-chip color="primary">PRO: {{ stats.users.byPlan.PRO }}</mat-chip>
+                <mat-chip color="accent">ENTERPRISE: {{ stats.users.byPlan.ENTERPRISE }}</mat-chip>
+              </mat-chip-set>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Subscriptions -->
+      <mat-card class="stat-card subscriptions">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>subscriptions</mat-icon>
+            Subscriptions
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-value">{{ stats.subscriptions.total }}</div>
+          <div class="stat-details">
+            <div class="stat-item">
+              <span class="label">Active:</span>
+              <span class="value">{{ stats.subscriptions.active }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Expired:</span>
+              <span class="value">{{ stats.subscriptions.expired }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Cancelled:</span>
+              <span class="value">{{ stats.subscriptions.cancelled }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Reviews -->
+      <mat-card class="stat-card reviews">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>rate_review</mat-icon>
+            Reviews
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-value">{{ stats.reviews.total }}</div>
+          <div class="stat-details">
+            <div class="stat-item">
+              <span class="label">This Month:</span>
+              <span class="value">{{ stats.reviews.thisMonth }}</span>
+            </div>
+            <div class="stat-item">
+              <span class="label">Last Month:</span>
+              <span class="value">{{ stats.reviews.lastMonth }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Repositories -->
+      <mat-card class="stat-card repositories">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>folder</mat-icon>
+            Repositories
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="stat-value">{{ stats.repositories.total }}</div>
+          <div class="stat-details">
+            <div class="stat-item">
+              <span class="label">Active:</span>
+              <span class="value">{{ stats.repositories.active }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+    <!-- Users Table -->
+    <mat-card class="users-table-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>people</mat-icon>
+          Users
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngIf="usersLoading" class="loading-overlay">
+          <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        </div>
+        <table mat-table [dataSource]="users" class="users-table">
+          <ng-container matColumnDef="username">
+            <th mat-header-cell *matHeaderCellDef>Username</th>
+            <td mat-cell *matCellDef="let user">
+              <div class="user-info">
+                <img *ngIf="user.avatarUrl" [src]="user.avatarUrl" [alt]="user.username" class="avatar" />
+                <span>{{ user.username }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Email</th>
+            <td mat-cell *matCellDef="let user">{{ user.email || 'N/A' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="role">
+            <th mat-header-cell *matHeaderCellDef>Role</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-chip [color]="user.role === 'ADMIN' ? 'accent' : 'primary'">
+                {{ user.role }}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="plan">
+            <th mat-header-cell *matHeaderCellDef>Plan</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-chip *ngIf="user.subscription" [color]="getPlanColor(user.subscription.planType)">
+                {{ user.subscription.planType }}
+              </mat-chip>
+              <span *ngIf="!user.subscription">-</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let user">
+              <mat-chip *ngIf="user.subscription" [color]="getStatusColor(user.subscription.status)">
+                {{ user.subscription.status }}
+              </mat-chip>
+              <span *ngIf="!user.subscription">-</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="reviews">
+            <th mat-header-cell *matHeaderCellDef>Reviews</th>
+            <td mat-cell *matCellDef="let user">{{ user.reviewsCount }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="createdAt">
+            <th mat-header-cell *matHeaderCellDef>Created</th>
+            <td mat-cell *matCellDef="let user">{{ user.createdAt | date: 'short' }}</td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Actions</th>
+            <td mat-cell *matCellDef="let user">
+              <button mat-icon-button [title]="'View details'">
+                <mat-icon>visibility</mat-icon>
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+        </table>
+
+        <mat-paginator
+          [length]="totalUsers"
+          [pageSize]="limit"
+          [pageSizeOptions]="[10, 20, 50, 100]"
+          (page)="onPageChange($event)"
+        ></mat-paginator>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

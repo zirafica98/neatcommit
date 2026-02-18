@@ -80,7 +80,28 @@ export class CallbackComponent implements OnInit {
   }
 
   checkSubscriptionAndNavigate(params: any): void {
-    // Proveri subscription status
+    // Proveri da li je korisnik admin
+    this.authService.getCurrentUser().subscribe({
+      next: (user) => {
+        // Ako je admin, preskoči plan selection i idi direktno na dashboard
+        if (user?.role === 'ADMIN') {
+          const returnUrl = params['returnUrl'] || '/dashboard';
+          this.router.navigate([returnUrl]);
+          return;
+        }
+
+        // Za obične korisnike, proveri subscription status
+        this.checkSubscriptionForUser(params);
+      },
+      error: (error) => {
+        console.error('Error getting user:', error);
+        // Ako ne može da dobije user-a, proveri subscription (fallback)
+        this.checkSubscriptionForUser(params);
+      },
+    });
+  }
+
+  private checkSubscriptionForUser(params: any): void {
     this.subscriptionService.getSubscription().subscribe({
       next: (subscriptionInfo) => {
         const returnUrl = params['returnUrl'] || '/dashboard';
@@ -107,7 +128,7 @@ export class CallbackComponent implements OnInit {
             } else {
               // Ako je obavezno, ne dozvoli zatvaranje
               if (!subscriptionInfo.subscription || isExpired) {
-                this.checkSubscriptionAndNavigate(params);
+                this.checkSubscriptionForUser(params);
               }
             }
           });

@@ -122,7 +122,8 @@ export class PricingComponent implements OnInit {
 
   onPaymentSubmit(paymentData: any): void {
     if (!this.selectedPlan) return;
-    this.proceedWithUpgrade(this.selectedPlan.id, true, paymentData);
+    const promoCode = paymentData?.promoCode || null;
+    this.proceedWithUpgrade(this.selectedPlan.id, true, paymentData, promoCode);
   }
 
   onPaymentCancel(): void {
@@ -130,11 +131,11 @@ export class PricingComponent implements OnInit {
     this.selectedPlan = null;
   }
 
-  private proceedWithUpgrade(planId: string, isDemo: boolean = true, paymentData?: any): void {
+  private proceedWithUpgrade(planId: string, isDemo: boolean = true, paymentData?: any, promoCode?: string | null): void {
     this.upgrading = true;
     this.error = null;
 
-    this.subscriptionService.upgradePlan(planId as 'FREE' | 'PRO' | 'ENTERPRISE', paymentData, isDemo).subscribe({
+    this.subscriptionService.upgradePlan(planId as 'FREE' | 'PRO' | 'ENTERPRISE', paymentData, isDemo, promoCode).subscribe({
       next: () => {
         this.upgrading = false;
         this.showPaymentForm = false;

@@ -11,6 +11,7 @@ export interface User {
   email?: string;
   avatarUrl?: string;
   name?: string;
+  role?: string; // USER, ADMIN
   createdAt: string;
   updatedAt: string;
 }

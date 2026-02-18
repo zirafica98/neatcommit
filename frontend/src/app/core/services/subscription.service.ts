@@ -82,10 +82,17 @@ export class SubscriptionService {
   }
 
   /**
+   * Validira promo code
+   */
+  validatePromoCode(code: string): Observable<{ valid: boolean; code?: string; discountPercentage?: number; error?: string }> {
+    return this.apiService.post('/api/subscription/validate-promo-code', { code });
+  }
+
+  /**
    * Upgrade subscription plan
    */
-  upgradePlan(planType: 'FREE' | 'PRO' | 'ENTERPRISE', paymentData?: any, isDemo: boolean = false): Observable<any> {
-    return this.apiService.post('/api/subscription/upgrade', { planType, paymentData, isDemo });
+  upgradePlan(planType: 'FREE' | 'PRO' | 'ENTERPRISE', paymentData?: any, isDemo: boolean = false, promoCode?: string | null): Observable<any> {
+    return this.apiService.post('/api/subscription/upgrade', { planType, paymentData, isDemo, promoCode });
   }
 
   /**
