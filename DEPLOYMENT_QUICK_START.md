@@ -45,7 +45,7 @@ Brzi vodič za deployovanje u 3 faze.
 # 2. Render Dashboard → New → Static Site
 # 3. Connect GitHub repo
 # 4. Root Directory: frontend
-# 5. Build Command: npm install && npm run build --configuration production
+# 5. Build Command: npm install && npm run build
 # 6. Publish Directory: dist/frontend
 ```
 

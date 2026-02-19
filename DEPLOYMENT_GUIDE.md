@@ -250,7 +250,7 @@ Kompletan vodič za deployovanje aplikacije na free servere u 3 faze.
    - **Name**: `elementer-frontend`
    - **Branch**: `main` (ili `master`)
    - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build --configuration production`
+   - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `dist/frontend`
    - **Plan**: Free
    - Klikni **Create Static Site**

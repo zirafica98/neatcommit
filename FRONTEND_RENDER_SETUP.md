@@ -32,7 +32,7 @@ export const environment = {
    - **Name**: `elementer-frontend`
    - **Branch**: `main` (ili `master` - proveri koji branch koristiš)
    - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build --configuration production`
+   - **Build Command**: `npm install && npm run build`
    - **Publish Directory**: `dist/frontend`
    - **Plan**: Free
 4. Klikni **Create Static Site**
