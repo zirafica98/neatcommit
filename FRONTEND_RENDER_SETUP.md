@@ -33,8 +33,12 @@ export const environment = {
    - **Branch**: `main` (ili `master` - proveri koji branch koristiš)
    - **Root Directory**: `frontend`
    - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist/frontend`
+   - **Publish Directory**: `dist/frontend/browser` (Angular 19 build-uje u `browser` subfolder)
    - **Plan**: Free
+
+   **VAŽNO**: 
+   - `angular.json` već ima `fileReplacements` konfigurisan da koristi `environment.prod.ts` u production build-u
+   - `_redirects` fajl je već konfigurisan u `public/` folderu za SPA routing
 4. Klikni **Create Static Site**
 
 ### 3. Render će automatski
@@ -73,8 +77,13 @@ export const environment = {
 - Proveri da li je `FRONTEND_URL` tačan u backend env varijablama
 
 ### Routing ne radi (404 na refresh):
-- Render Static Site automatski podržava SPA routing
-- Ako ne radi, proveri da li je `Publish Directory` tačan
+- Proveri da li je `Publish Directory` tačan (`dist/frontend/browser`)
+- Proveri da li `_redirects` fajl postoji u `public/` folderu sa sadržajem: `/*    /index.html   200`
+- Proveri da li se `_redirects` kopira u build output (trebalo bi da bude u `dist/frontend/browser/_redirects`)
+
+### Frontend koristi localhost umesto production URL-a:
+- Proveri da li `angular.json` ima `fileReplacements` u production konfiguraciji
+- Proveri da li je `environment.prod.ts` tačno konfigurisan sa production backend URL-om
 
 ---
 

@@ -251,9 +251,13 @@ Kompletan vodič za deployovanje aplikacije na free servere u 3 faze.
    - **Branch**: `main` (ili `master`)
    - **Root Directory**: `frontend`
    - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist/frontend`
+   - **Publish Directory**: `dist/frontend/browser` (Angular 19 build-uje u `browser` subfolder)
    - **Plan**: Free
    - Klikni **Create Static Site**
+
+   **VAŽNO**: 
+   - `angular.json` već ima `fileReplacements` konfigurisan da koristi `environment.prod.ts` u production build-u
+   - `_redirects` fajl je već konfigurisan u `public/` folderu za SPA routing
 
 3. **Render će automatski**:
    - Build-ovati Angular aplikaciju
