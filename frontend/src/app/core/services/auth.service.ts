@@ -23,8 +23,22 @@ export class AuthService {
     private apiService: ApiService,
     private router: Router
   ) {
-    // Load user from storage on init
+    // Jednom pri startu: obriši nevažeće vrednosti (string "undefined"/"null") iz localStorage
+    this.clearInvalidStorage();
     this.loadUserFromStorage();
+  }
+
+  /**
+   * Uklanja ključeve čija je vrednost string "undefined" ili "null" – sprečava greške pri čitanju.
+   */
+  private clearInvalidStorage(): void {
+    const keys = ['access_token', 'refresh_token', 'user'];
+    keys.forEach((key) => {
+      const value = localStorage.getItem(key);
+      if (value === 'undefined' || value === 'null' || (value != null && value.trim() === '')) {
+        localStorage.removeItem(key);
+      }
+    });
   }
 
   /**
