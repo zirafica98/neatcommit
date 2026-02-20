@@ -89,6 +89,11 @@ mat-form-field {
   border-radius: 8px;
   font-size: 0.9rem;
 
+  &.top-error {
+    background: #e3f2fd;
+    color: #1565c0;
+  }
+
   mat-icon {
     font-size: 1.25rem;
     width: 1.25rem;

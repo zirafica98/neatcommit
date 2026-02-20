@@ -296,7 +296,7 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         if (resolvedInstallation?.user) {
           const jwtAccessToken = generateAccessToken(resolvedInstallation.user);
           const jwtRefreshToken = generateRefreshToken(resolvedInstallation.user);
-          logger.info('User authenticated via installation callback (after retry/API fallback)', {
+          logger.info('User authenticated via installation callback (after retry)', {
             userId: resolvedInstallation.user.id,
             username: resolvedInstallation.user.username,
             installationId: installationId,
@@ -306,9 +306,32 @@ router.get('/github/callback', async (req: Request, res: Response) => {
           redirectUrl.searchParams.set('refresh_token', jwtRefreshToken);
           return res.redirect(redirectUrl.toString());
         }
-        // Installation postoji ali nema user (ne bi trebalo posle API fallback-a)
-        logger.warn('Installation has no user after fallback', { installationId });
-        return res.redirect(`${env.FRONTEND_URL}/auth/login?error=user_not_linked`);
+        // Installation postoji ali nema user – poveži po accountId iz baze (bez GitHub API)
+        const userByAccount = await prisma.user.findUnique({
+          where: { githubId: resolvedInstallation.accountId },
+        });
+        if (userByAccount) {
+          await prisma.installation.update({
+            where: { id: resolvedInstallation.id },
+            data: { userId: userByAccount.id },
+          });
+          const jwtAccessToken = generateAccessToken(userByAccount);
+          const jwtRefreshToken = generateRefreshToken(userByAccount);
+          logger.info('User linked to installation from DB (after wait)', {
+            userId: userByAccount.id,
+            username: userByAccount.username,
+            installationId: installationId,
+          });
+          const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
+          redirectUrl.searchParams.set('access_token', jwtAccessToken);
+          redirectUrl.searchParams.set('refresh_token', jwtRefreshToken);
+          return res.redirect(redirectUrl.toString());
+        }
+        logger.warn('Installation has no user (no user with githubId)', {
+          installationId,
+          accountId: resolvedInstallation.accountId,
+        });
+        return res.redirect(`${env.FRONTEND_URL}/auth/login?error=sign_in_with_github_first`);
       } else {
         // Installation postoji - proveri da li ima povezanog korisnika
         if (installation.user) {
@@ -327,70 +350,34 @@ router.get('/github/callback', async (req: Request, res: Response) => {
 
           return res.redirect(redirectUrl.toString());
         } else {
-          // Installation postoji ali nema povezanog korisnika
-          // Pokušaj da dobiješ user informacije koristeći installation token
-          try {
-            const { getInstallationOctokit } = await import('../../services/github-app.service');
-            const octokit = await getInstallationOctokit(installationId);
-            
-            // Dohvati installation info da vidimo account
-            const installationInfo = await octokit.rest.apps.getInstallation({
-              installation_id: installationId,
+          // Installation postoji ali nema povezanog korisnika.
+          // Prvo pokušaj povezivanje iz baze (installation.accountId === User.githubId) – bez GitHub API/JWT.
+          const userByAccount = await prisma.user.findUnique({
+            where: { githubId: installation.accountId },
+          });
+          if (userByAccount) {
+            await prisma.installation.update({
+              where: { id: installation.id },
+              data: { userId: userByAccount.id },
             });
-
-            const account = installationInfo.data.account;
-            const accountId = account?.id;
-            if (accountId) {
-              // Pronađi ili kreiraj korisnika
-              let user = await prisma.user.findUnique({
-                where: { githubId: accountId },
-              });
-
-              if (!user) {
-                // account može biti User ili Organization
-                const username = 'login' in account ? account.login : account.slug;
-                const name = 'name' in account ? account.name : account.name;
-                
-                user = await prisma.user.create({
-                  data: {
-                    githubId: accountId,
-                    username: username || 'unknown',
-                    email: null,
-                    avatarUrl: account.avatar_url || null,
-                    name: name || null,
-                  },
-                });
-                logger.info('User created from installation callback', { userId: user.id });
-              }
-
-              // Poveži installation sa korisnikom
-              await prisma.installation.update({
-                where: { id: installation.id },
-                data: { userId: user.id },
-              });
-
-              // Generiši tokene i redirektuj
-              const jwtAccessToken = generateAccessToken(user);
-              const jwtRefreshToken = generateRefreshToken(user);
-
-              logger.info('User authenticated and linked via installation callback', {
-                userId: user.id,
-                username: user.username,
-                installationId: installationId,
-              });
-
-              const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
-              redirectUrl.searchParams.set('access_token', jwtAccessToken);
-              redirectUrl.searchParams.set('refresh_token', jwtRefreshToken);
-
-              return res.redirect(redirectUrl.toString());
-            }
-          } catch (error) {
-            logger.error('Failed to get user from installation:', error);
+            const jwtAccessToken = generateAccessToken(userByAccount);
+            const jwtRefreshToken = generateRefreshToken(userByAccount);
+            logger.info('User linked to installation from DB (accountId)', {
+              userId: userByAccount.id,
+              username: userByAccount.username,
+              installationId: installationId,
+            });
+            const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
+            redirectUrl.searchParams.set('access_token', jwtAccessToken);
+            redirectUrl.searchParams.set('refresh_token', jwtRefreshToken);
+            return res.redirect(redirectUrl.toString());
           }
 
-          logger.warn('Installation exists but no user linked and cannot create', { installationId });
-          return res.redirect(`${env.FRONTEND_URL}/auth/login?error=user_not_linked`);
+          logger.warn('Installation exists but no user linked (no user with githubId)', {
+            installationId,
+            accountId: installation.accountId,
+          });
+          return res.redirect(`${env.FRONTEND_URL}/auth/login?error=sign_in_with_github_first`);
         }
       }
     }
