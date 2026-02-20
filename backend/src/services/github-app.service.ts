@@ -201,7 +201,8 @@ async function getInstallationTokenViaApi(installationId: number): Promise<strin
     });
     throw new Error(`GitHub API ${res.status}: ${errMsg}`);
   }
-  const data = (await res.json()) as { token: string };
+  // Body je već pročitan sa res.text() – ne smemo ponovo res.json()
+  const data = JSON.parse(body) as { token: string };
   return data.token;
 }
 
