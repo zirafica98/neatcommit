@@ -29,16 +29,23 @@ export class AuthService {
   }
 
   /**
-   * Uklanja ključeve čija je vrednost string "undefined" ili "null" – sprečava greške pri čitanju.
+   * Uklanja nevažeće vrednosti iz localStorage da loadUserFromStorage nikad ne dobije "undefined".
    */
   private clearInvalidStorage(): void {
-    const keys = ['access_token', 'refresh_token', 'user'];
-    keys.forEach((key) => {
-      const value = localStorage.getItem(key);
-      if (value === 'undefined' || value === 'null' || (value != null && value.trim() === '')) {
+    ['access_token', 'refresh_token'].forEach((key) => {
+      const v = localStorage.getItem(key);
+      if (v === 'undefined' || v === 'null' || (v != null && v.trim() === '')) {
         localStorage.removeItem(key);
       }
     });
+    const userStr = localStorage.getItem('user');
+    if (
+      userStr === 'undefined' ||
+      userStr === 'null' ||
+      (userStr != null && (userStr.trim() === '' || !userStr.trim().startsWith('{')))
+    ) {
+      localStorage.removeItem('user');
+    }
   }
 
   /**
@@ -222,19 +229,29 @@ export class AuthService {
   }
 
   /**
-   * Load user from storage. Parsira samo ako vrednost izgleda kao JSON objekat.
+   * Load user from storage. Parsira samo validan JSON objekat; nikad ne parsira "undefined"/"null".
    */
   private loadUserFromStorage(): void {
-    const userStr = localStorage.getItem('user');
-    if (!userStr || typeof userStr !== 'string') return;
-    const trimmed = userStr.trim();
-    if (trimmed === '' || trimmed === 'undefined' || trimmed === 'null' || !trimmed.startsWith('{')) {
-      localStorage.removeItem('user');
-      return;
-    }
     try {
+      const userStr = localStorage.getItem('user');
+      if (userStr == null || typeof userStr !== 'string') return;
+      const trimmed = userStr.trim();
+      if (
+        trimmed.length === 0 ||
+        trimmed === 'undefined' ||
+        trimmed === 'null' ||
+        !trimmed.startsWith('{') ||
+        !trimmed.endsWith('}')
+      ) {
+        localStorage.removeItem('user');
+        return;
+      }
       const user = JSON.parse(userStr);
-      this.currentUserSubject.next(user);
+      if (user && typeof user === 'object') {
+        this.currentUserSubject.next(user);
+      } else {
+        localStorage.removeItem('user');
+      }
     } catch {
       localStorage.removeItem('user');
     }
