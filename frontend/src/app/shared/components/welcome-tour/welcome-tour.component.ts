@@ -6,6 +6,8 @@
 
 import { Component, OnInit, OnDestroy, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
@@ -32,12 +34,30 @@ export class WelcomeTourComponent implements OnInit, OnDestroy {
   currentStepIndex = 0;
   currentStep: TourStep | null = null;
   targetElement: HTMLElement | null = null;
+  /** Tour se ne prikazuje na auth stranicama (login, install, callback, installation-wait). */
+  isOnAuthRoute = false;
 
   private subscriptions = new Subscription();
 
-  constructor(public tourService: TourService) {}
+  constructor(
+    public tourService: TourService,
+    private router: Router,
+  ) {}
 
   ngOnInit(): void {
+    this.updateAuthRoute(this.router.url);
+
+    this.subscriptions.add(
+      this.router.events.pipe(
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd)
+      ).subscribe((e) => {
+        this.updateAuthRoute(e.urlAfterRedirects);
+        if (this.isOnAuthRoute && this.tourActive) {
+          this.tourService.skipTour();
+        }
+      })
+    );
+
     // Subscribe na tour status
     this.subscriptions.add(
       this.tourService.tourActive.subscribe((active) => {
@@ -55,12 +75,16 @@ export class WelcomeTourComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Auto-start tour ako korisnik nije završio tour
-    if (this.tourService.shouldShowTour()) {
+    // Auto-start tour samo kada korisnik NIJE na auth stranici (tooltipi imaju smisla tek posle logina)
+    if (this.tourService.shouldShowTour() && !this.isOnAuthRoute) {
       setTimeout(() => {
         this.tourService.startTour();
       }, 1000);
     }
+  }
+
+  private updateAuthRoute(url: string): void {
+    this.isOnAuthRoute = url.startsWith('/auth');
   }
 
   ngOnDestroy(): void {

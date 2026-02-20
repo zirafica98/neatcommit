@@ -22,6 +22,23 @@
           <mat-icon>code</mat-icon>
           Sign in with GitHub
         </button>
+
+        <!-- How it works - šta korisnika čeka -->
+        <div class="how-it-works">
+          <button mat-button type="button" class="how-it-works-toggle" (click)="toggleHowItWorks()">
+            <mat-icon>{{ showHowItWorks ? 'expand_less' : 'info' }}</mat-icon>
+            <span>{{ showHowItWorks ? 'Hide steps' : 'What happens next?' }}</span>
+          </button>
+          <div *ngIf="showHowItWorks" class="how-it-works-steps">
+            <p class="how-it-works-intro">Clicking "Sign in with GitHub" will take you through:</p>
+            <ol>
+              <li><strong>GitHub</strong> — you’ll be redirected to GitHub to sign in (if you aren’t already).</li>
+              <li><strong>Install the app</strong> — if NeatCommit isn’t installed yet, GitHub will ask you to install our app on your account or organization.</li>
+              <li><strong>Choose repositories</strong> — select which repositories NeatCommit can access (all, selected, or a single repo).</li>
+              <li><strong>Back to the app</strong> — after confirming, you’ll return here and can use the dashboard, reviews, and documentation.</li>
+            </ol>
+          </div>
+        </div>
       </div>
 
       <!-- Admin Login Form (shown when showAdminLogin is true) -->

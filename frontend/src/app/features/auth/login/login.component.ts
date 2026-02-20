@@ -41,6 +41,7 @@ export class LoginComponent implements OnInit {
   showAdminLogin = false;
   loading = false;
   loginError: string | null = null;
+  showHowItWorks = false;
 
   constructor(
     private fb: FormBuilder,
@@ -66,6 +67,10 @@ export class LoginComponent implements OnInit {
   toggleAdminLogin(): void {
     this.showAdminLogin = !this.showAdminLogin;
     this.loginError = null;
+  }
+
+  toggleHowItWorks(): void {
+    this.showHowItWorks = !this.showHowItWorks;
   }
 
   onLogin(): void {
