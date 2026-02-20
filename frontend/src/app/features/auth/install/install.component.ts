@@ -68,7 +68,7 @@ export class InstallComponent implements OnInit, OnDestroy {
 
   openInstallationPage(): void {
     // Slug iz environment – mora tačno odgovarati GitHub App (vidi URL u Settings → GitHub Apps)
-    const appSlug = environment.githubAppName || 'neatcommite';
+    const appSlug = environment.githubAppName || 'neatcommit';
     const installUrl = `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`;
     window.location.href = installUrl;
     this.installationOpened = true;
