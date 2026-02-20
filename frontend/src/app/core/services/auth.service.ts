@@ -49,17 +49,30 @@ export class AuthService {
   }
 
   /**
+   * Vraća vrednost iz storage samo ako je validna (ne "undefined"/"null" string).
+   * Ako je nevalidna, briše je i vraća null.
+   */
+  private getValidStorage(key: string): string | null {
+    const value = localStorage.getItem(key);
+    if (value == null || value === 'undefined' || value === 'null' || value.length < 10) {
+      if (value != null) localStorage.removeItem(key);
+      return null;
+    }
+    return value;
+  }
+
+  /**
    * Get access token from storage
    */
   getToken(): string | null {
-    return localStorage.getItem('access_token');
+    return this.getValidStorage('access_token');
   }
 
   /**
    * Get refresh token from storage
    */
   getRefreshToken(): string | null {
-    return localStorage.getItem('refresh_token');
+    return this.getValidStorage('refresh_token');
   }
 
   /**
@@ -71,11 +84,8 @@ export class AuthService {
       password,
     }).pipe(
       tap((response) => {
-        // Store tokens
-        localStorage.setItem('access_token', response.accessToken);
-        localStorage.setItem('refresh_token', response.refreshToken);
-        
-        // Store user
+        if (response.accessToken) localStorage.setItem('access_token', response.accessToken);
+        if (response.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
         this.setUser(response.user);
       }),
       catchError((error) => {
@@ -96,9 +106,8 @@ export class AuthService {
       name,
     }).pipe(
       tap((response) => {
-        // Store tokens
-        localStorage.setItem('access_token', response.accessToken);
-        localStorage.setItem('refresh_token', response.refreshToken);
+        if (response.accessToken) localStorage.setItem('access_token', response.accessToken);
+        if (response.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
         
         // Store user
         this.setUser(response.user);
@@ -126,12 +135,9 @@ export class AuthService {
   handleOAuthCallback(code: string): Observable<User> {
     return this.apiService.post<{ user: User; accessToken: string; refreshToken: string }>('/api/auth/github/callback', { code }).pipe(
       tap((response) => {
-        // Store tokens
-        localStorage.setItem('access_token', response.accessToken);
-        localStorage.setItem('refresh_token', response.refreshToken);
-        
-        // Store user
-        this.setUser(response.user);
+        if (response?.accessToken) localStorage.setItem('access_token', response.accessToken);
+        if (response?.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
+        this.setUser(response?.user ?? null);
       }),
       map((response) => response.user),
       catchError((error) => {
@@ -167,7 +173,7 @@ export class AuthService {
 
     return this.apiService.post<{ accessToken: string }>('/api/auth/refresh', { refreshToken }).pipe(
       tap((response) => {
-        localStorage.setItem('access_token', response.accessToken);
+        if (response?.accessToken) localStorage.setItem('access_token', response.accessToken);
       }),
       map((response) => response.accessToken),
       catchError((error) => {
@@ -202,19 +208,20 @@ export class AuthService {
   }
 
   /**
-   * Load user from storage
+   * Load user from storage. Parsira samo ako vrednost izgleda kao JSON objekat.
    */
   private loadUserFromStorage(): void {
     const userStr = localStorage.getItem('user');
-    if (!userStr || userStr === 'undefined' || userStr === 'null') {
-      if (userStr) localStorage.removeItem('user');
+    if (!userStr || typeof userStr !== 'string') return;
+    const trimmed = userStr.trim();
+    if (trimmed === '' || trimmed === 'undefined' || trimmed === 'null' || !trimmed.startsWith('{')) {
+      localStorage.removeItem('user');
       return;
     }
     try {
       const user = JSON.parse(userStr);
       this.currentUserSubject.next(user);
-    } catch (error) {
-      console.error('Error parsing user from storage:', error);
+    } catch {
       localStorage.removeItem('user');
     }
   }

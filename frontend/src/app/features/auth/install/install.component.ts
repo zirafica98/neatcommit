@@ -98,20 +98,13 @@ export class InstallComponent implements OnInit, OnDestroy {
     this.apiService.get<any>('/api/repositories').subscribe({
       next: (response) => {
         this.checking = false;
-        
-        // Zaustavi polling
         if (this.checkingInterval) {
           clearInterval(this.checkingInterval);
         }
-
-        // Sačuvaj tokene
-        localStorage.setItem('access_token', response.accessToken);
-        localStorage.setItem('refresh_token', response.refreshToken);
-        
-        // Sačuvaj user-a
-        this.authService.setUser(response.user);
-        
-        // Redirektuj na dashboard
+        // /api/repositories ne vraća tokene – samo ako backend ikad vrati, upiši ih
+        if (response?.accessToken) localStorage.setItem('access_token', response.accessToken);
+        if (response?.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
+        if (response?.user) this.authService.setUser(response.user);
         this.router.navigate(['/dashboard']);
       },
       error: (error) => {

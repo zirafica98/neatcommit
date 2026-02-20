@@ -36,8 +36,9 @@ export class CallbackComponent implements OnInit {
         return;
       }
 
-      // If we have tokens from redirect, store them and get user
-      if (accessToken && refreshToken) {
+      // If we have tokens from redirect, store them and get user (ignore "undefined" string)
+      const validToken = (t: string) => t && t !== 'undefined' && t !== 'null' && t.length > 10;
+      if (validToken(accessToken) && validToken(refreshToken)) {
         localStorage.setItem('access_token', accessToken);
         localStorage.setItem('refresh_token', refreshToken);
         
