@@ -22,41 +22,58 @@ const OctokitWithPlugins = Octokit.plugin(restEndpointMethods, paginateRest);
  * 3. Sa installation token-om možemo da pristupamo GitHub API-ju
  */
 
+const PEM_BEGIN = '-----BEGIN RSA PRIVATE KEY-----';
+const PEM_END = '-----END RSA PRIVATE KEY-----';
+
 /**
- * Formatira private key za korišćenje
- * GitHub private key može biti u različitim formatima:
- * - Sa \n escape sekvencama: "-----BEGIN RSA PRIVATE KEY-----\nMIIE..."
- * - Sa stvarnim novim redovima (multi-line string)
- * - Sa \\n (double escaped)
+ * Formatira private key za korišćenje.
+ * Na Renderu (i drugim hostovima) env varijabla često gubi nove redove – onda GitHub
+ * odgovara "A JSON web token could not be decoded".
+ * Podržani formati:
+ * - Jedan red sa literal \n: "-----BEGIN...\nMIIE...\n-----END..."
+ * - Više redova (prav PEM)
+ * - Jedan dugačak red bez \n (rekonstruišemo PEM, 64 char po liniji)
  */
 function formatPrivateKey(key: string): string {
-  if (!key || key.trim().length === 0) {
+  if (!key || typeof key !== 'string' || key.trim().length === 0) {
     throw new Error('GITHUB_PRIVATE_KEY is empty or undefined');
   }
-  
-  // Ako već ima prave nove redove, vrati kao jeste
-  if (key.includes('\n') && !key.includes('\\n')) {
-    logger.debug('✅ Private key already has newlines');
-    return key;
+
+  let formatted = key.trim();
+
+  // Literal backslash-n (dva karaktera) → pravi newline
+  if (formatted.includes('\\n')) {
+    formatted = formatted.replace(/\\n/g, '\n');
   }
-  
-  // Zameni \\n sa \n (double escaped -> single escaped)
-  let formatted = key.replace(/\\n/g, '\n');
-  
-  // Proveri format
-  if (!formatted.includes('-----BEGIN')) {
-    logger.error('❌ Private key format is incorrect - missing BEGIN marker');
-    logger.error('Private key should start with: -----BEGIN RSA PRIVATE KEY-----');
+
+  // Već ima nove redove i izgleda kao PEM
+  if (formatted.includes('\n') && formatted.includes(PEM_BEGIN) && formatted.includes(PEM_END)) {
+    return formatted;
+  }
+
+  // Jedan red bez newline (često na Renderu) – rekonstruišemo PEM (base64 u linijama po 64 char)
+  if (!formatted.includes('\n') && formatted.includes(PEM_BEGIN) && formatted.includes(PEM_END)) {
+    const afterBegin = formatted.indexOf(PEM_BEGIN) + PEM_BEGIN.length;
+    const beforeEnd = formatted.indexOf(PEM_END);
+    const middle = formatted.slice(afterBegin, beforeEnd).replace(/\s/g, '');
+    const lines: string[] = [];
+    for (let i = 0; i < middle.length; i += 64) {
+      lines.push(middle.slice(i, i + 64));
+    }
+    formatted = `${PEM_BEGIN}\n${lines.join('\n')}\n${PEM_END}`;
+    logger.info('Private key had no newlines; PEM reconstructed for GitHub JWT');
+    return formatted;
+  }
+
+  if (!formatted.includes(PEM_BEGIN)) {
+    logger.error('Private key missing -----BEGIN RSA PRIVATE KEY-----');
     throw new Error('Invalid private key format: missing BEGIN marker');
   }
-  
-  if (!formatted.includes('-----END')) {
-    logger.error('❌ Private key format is incorrect - missing END marker');
-    logger.error('Private key should end with: -----END RSA PRIVATE KEY-----');
+  if (!formatted.includes(PEM_END)) {
+    logger.error('Private key missing -----END RSA PRIVATE KEY-----');
     throw new Error('Invalid private key format: missing END marker');
   }
-  
-  logger.debug('✅ Private key formatted successfully');
+
   return formatted;
 }
 
