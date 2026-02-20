@@ -67,10 +67,9 @@ export class InstallComponent implements OnInit, OnDestroy {
   }
 
   openInstallationPage(): void {
-    // Otvori u ISTOJ tabu da nakon instalacije GitHub redirektuje na backend,
-    // a backend na FRONTEND_URL/auth/callback – korisnik završi u aplikaciji
-    const appName = environment.githubAppName || 'neatcommit';
-    const installUrl = `https://github.com/apps/${appName}/installations/new`;
+    // Slug iz environment – mora tačno odgovarati GitHub App (vidi URL u Settings → GitHub Apps)
+    const appSlug = environment.githubAppName || 'neatcommite';
+    const installUrl = `https://github.com/apps/${encodeURIComponent(appSlug)}/installations/new`;
     window.location.href = installUrl;
     this.installationOpened = true;
   }
