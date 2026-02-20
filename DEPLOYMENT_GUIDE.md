@@ -449,6 +449,12 @@ Ako ipak želiš da koristiš Heroku umesto Render Static Site:
 - Proveri `GITHUB_WEBHOOK_SECRET`
 - Proveri da li backend prima webhook requests (logovi)
 
+### "A JSON web token could not be decoded" (GitHub / installation callback):
+- Backend sada prvo pokušava **ručno** generisan JWT (bez @octokit/auth-app) – ako i dalje vidiš ovu grešku:
+- **GITHUB_PRIVATE_KEY na Renderu:** mora biti **ceo** ključ, u **jednom redu** sa literal `\n` (backslash + n) na mestima novog reda. Ako uneseš ključ sa pravim Enter/novim redovima, Render često **čita samo prvi red** i ključ bude neispravan.
+- Proveri da vrednost nije skraćena (npr. kopiraj iz fajla .pem i zameni svaki novi red sa `\n` u jednom redu).
+- **GITHUB_APP_ID** mora biti broj (npr. `12345`), bez navodnika koji bi ga pretvorili u string.
+
 ---
 
 ## 📝 Environment Variables Summary

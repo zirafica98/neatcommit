@@ -3,6 +3,7 @@ import { Octokit } from '@octokit/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
 import { paginateRest } from '@octokit/plugin-paginate-rest';
 import { createAppAuth } from '@octokit/auth-app';
+import jwt from 'jsonwebtoken';
 import env from '../config/env';
 import { logger } from '../utils/logger';
 
@@ -103,22 +104,95 @@ try {
 export { githubApp };
 
 /**
- * Dobija installation access token za dati installation ID
+ * Generiše GitHub App JWT ručno (za zaobilazak problema "A JSON web token could not be decoded"
+ * kada env varijabla na hostu (npr. Render) pokvari format).
+ * GitHub očekuje: iss = App ID (integer), iat, exp (max 10 min).
+ */
+function createGitHubAppJwt(): string {
+  const key = formatPrivateKey(env.GITHUB_PRIVATE_KEY);
+  const appId = parseInt(env.GITHUB_APP_ID, 10);
+  if (Number.isNaN(appId)) {
+    throw new Error('GITHUB_APP_ID must be a number');
+  }
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: appId,
+    iat: now,
+    exp: now + 600, // 10 min
+  };
+  return jwt.sign(payload, key, { algorithm: 'RS256' });
+}
+
+/**
+ * Dobija installation access token direktnim pozivom GitHub API-ja sa ručno generisanim JWT.
+ * Koristi se kada createAppAuth vraća "A JSON web token could not be decoded".
+ */
+async function getInstallationTokenViaApi(installationId: number): Promise<string> {
+  let token: string;
+  try {
+    token = createGitHubAppJwt();
+  } catch (signError) {
+    logger.error('GitHub App JWT signing failed (check GITHUB_PRIVATE_KEY format)', {
+      error: signError instanceof Error ? signError.message : String(signError),
+    });
+    throw signError;
+  }
+  if (!token || typeof token !== 'string' || token.split('.').length !== 3) {
+    logger.error('Generated JWT is invalid (wrong structure)');
+    throw new Error('Generated JWT is invalid');
+  }
+  const res = await fetch(
+    `https://api.github.com/app/installations/${installationId}/access_tokens`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    }
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    let errMsg = body;
+    try {
+      const j = JSON.parse(body);
+      errMsg = j.message || j.error || body;
+    } catch {
+      // use body as is
+    }
+    throw new Error(`GitHub API ${res.status}: ${errMsg}`);
+  }
+  const data = (await res.json()) as { token: string };
+  return data.token;
+}
+
+/**
+ * Dobija installation access token za dati installation ID.
+ * Prvo pokušava ručni JWT + GitHub API (robustnije na Renderu), pa fallback na @octokit/auth-app.
  */
 async function getInstallationToken(installationId: number): Promise<string> {
   try {
-    // Koristimo @octokit/auth-app za dobijanje installation token-a
+    const token = await getInstallationTokenViaApi(installationId);
+    logger.debug('✅ Installation token obtained (manual JWT)', { installationId });
+    return token;
+  } catch (manualError) {
+    logger.warn('Manual JWT installation token failed, trying createAppAuth', {
+      installationId,
+      error: manualError instanceof Error ? manualError.message : String(manualError),
+    });
+  }
+
+  try {
     const auth = createAppAuth({
       appId: env.GITHUB_APP_ID,
       privateKey: formatPrivateKey(env.GITHUB_PRIVATE_KEY),
     });
-    
     const { token } = await auth({
       type: 'installation',
       installationId: installationId,
     });
-    
-    logger.debug('✅ Installation token obtained', { installationId });
+    logger.debug('✅ Installation token obtained (createAppAuth)', { installationId });
     return token;
   } catch (error) {
     logger.error('❌ Failed to get installation token:', {
