@@ -53,10 +53,17 @@ export function generateRefreshToken(user: User): string {
  * Verifikuje JWT access token
  */
 export function verifyAccessToken(token: string): TokenPayload | null {
+  if (!token || typeof token !== 'string' || token.length < 20) {
+    return null;
+  }
+  // Ne loguj za očigledno nevažeće (npr. "undefined", "null") – samo return null
+  const looksLikeJwt = token.split('.').length === 3;
   try {
     return jwt.verify(token, env.JWT_SECRET) as TokenPayload;
   } catch (error) {
-    logger.warn('Invalid access token', { error });
+    if (looksLikeJwt) {
+      logger.warn('Invalid access token', { error });
+    }
     return null;
   }
 }

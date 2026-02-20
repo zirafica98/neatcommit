@@ -267,39 +267,98 @@ router.get('/github/callback', async (req: Request, res: Response) => {
       });
 
       if (!installation) {
-        logger.warn('Installation not found in callback - webhook may not have processed yet', { 
-          installationId 
+        logger.warn('Installation not found in callback - webhook may not have processed yet', {
+          installationId,
         });
         // Sačekaj malo i probaj ponovo (webhook možda još nije obradjen)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const retryInstallation = await prisma.installation.findUnique({
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        let resolvedInstallation = await prisma.installation.findUnique({
           where: { installationId: installationId },
           include: { user: true },
         });
 
-        if (!retryInstallation) {
-          logger.error('Installation still not found after retry', { installationId });
-          return res.redirect(`${env.FRONTEND_URL}/auth/login?error=installation_not_found`);
+        // Ako i dalje nema u bazi, kreiraj instalaciju iz GitHub API-ja (ne oslanjaj se na webhook)
+        if (!resolvedInstallation) {
+          try {
+            const { getInstallationOctokit } = await import('../../services/github-app.service');
+            const octokit = await getInstallationOctokit(installationId);
+            const installationInfo = await octokit.rest.apps.getInstallation({
+              installation_id: installationId,
+            });
+            const account = installationInfo.data.account;
+            const accountId = account?.id;
+            if (!accountId) {
+              logger.error('GitHub installation has no account', { installationId });
+              return res.redirect(`${env.FRONTEND_URL}/auth/login?error=installation_not_found`);
+            }
+            const accountLogin = 'login' in account ? account.login : (account as any).slug;
+            const accountType = (account as any).type || 'User';
+            const targetType = installationInfo.data.target_type || 'User';
+
+            let user = await prisma.user.findUnique({
+              where: { githubId: accountId },
+            });
+            if (!user) {
+              const name = 'name' in account ? (account as any).name : null;
+              user = await prisma.user.create({
+                data: {
+                  githubId: accountId,
+                  username: accountLogin || 'unknown',
+                  email: null,
+                  avatarUrl: account.avatar_url || null,
+                  name: name || null,
+                },
+              });
+              logger.info('User created from installation callback (API fallback)', { userId: user.id });
+            }
+
+            resolvedInstallation = await prisma.installation.upsert({
+              where: { installationId: installationId },
+              create: {
+                installationId: installationId,
+                accountId: accountId,
+                accountType: accountType,
+                accountLogin: accountLogin || 'unknown',
+                targetType: targetType,
+                userId: user.id,
+              },
+              update: {
+                accountId: accountId,
+                accountType: accountType,
+                accountLogin: accountLogin || 'unknown',
+                targetType: targetType,
+                userId: user.id,
+                updatedAt: new Date(),
+              },
+              include: { user: true },
+            });
+            logger.info('Installation created from GitHub API in callback', { installationId });
+          } catch (apiError) {
+            logger.error('Failed to create installation from GitHub API', {
+              installationId,
+              error: apiError instanceof Error ? apiError.message : String(apiError),
+            });
+            return res.redirect(`${env.FRONTEND_URL}/auth/login?error=installation_not_found`);
+          }
         }
 
-        // Ako installation ima povezanog korisnika, loguj ga
-        if (retryInstallation.user) {
-          const jwtAccessToken = generateAccessToken(retryInstallation.user);
-          const jwtRefreshToken = generateRefreshToken(retryInstallation.user);
-
-          logger.info('User authenticated via installation callback (after retry)', {
-            userId: retryInstallation.user.id,
-            username: retryInstallation.user.username,
+        if (resolvedInstallation?.user) {
+          const jwtAccessToken = generateAccessToken(resolvedInstallation.user);
+          const jwtRefreshToken = generateRefreshToken(resolvedInstallation.user);
+          logger.info('User authenticated via installation callback (after retry/API fallback)', {
+            userId: resolvedInstallation.user.id,
+            username: resolvedInstallation.user.username,
             installationId: installationId,
           });
-
           const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
           redirectUrl.searchParams.set('access_token', jwtAccessToken);
           redirectUrl.searchParams.set('refresh_token', jwtRefreshToken);
-
           return res.redirect(redirectUrl.toString());
         }
+        // Installation postoji ali nema user (ne bi trebalo posle API fallback-a)
+        logger.warn('Installation has no user after fallback', { installationId });
+        return res.redirect(`${env.FRONTEND_URL}/auth/login?error=user_not_linked`);
       } else {
         // Installation postoji - proveri da li ima povezanog korisnika
         if (installation.user) {

@@ -38,20 +38,21 @@ Brzi vodič za deployovanje u 3 faze.
 
 ### 3️⃣ Frontend (5 min)
 
-**Render Static Site** (PREPORUČENO - besplatno, ne spava)
+**Vercel** (PREPORUČENO - besplatno, ne spava, automatski SPA routing)
 
 ```bash
 # 1. Ažuriraj environment.prod.ts sa backend URL-om
-# 2. Render Dashboard → New → Static Site
-# 3. Connect GitHub repo
+# 2. Vercel Dashboard → Add New → Project
+# 3. Import GitHub repo
 # 4. Root Directory: frontend
-# 5. Build Command: npm install && npm run build
-# 6. Publish Directory: dist/frontend
+# 5. Build Command: npm run build
+# 6. Output Directory: dist/frontend/browser
+# 7. Deploy
 ```
 
 **Ažuriraj**:
 - `frontend/src/environments/environment.prod.ts` - dodaj backend URL
-- Backend `FRONTEND_URL` - dodaj Render Static Site URL
+- Backend `FRONTEND_URL` - dodaj Vercel URL
 
 ## 🔑 Ključne Environment Varijable
 
@@ -73,7 +74,7 @@ API_URL=https://your-backend.onrender.com
 ## ✅ Provera
 
 1. Backend health: `https://your-backend.onrender.com/health`
-2. Frontend: `https://your-app.herokuapp.com`
+2. Frontend: `https://your-frontend.vercel.app`
 3. Login radi
 4. GitHub OAuth radi
 

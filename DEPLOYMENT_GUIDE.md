@@ -186,7 +186,10 @@ Kompletan vodič za deployovanje aplikacije na free servere u 3 faze.
      -----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----
      ```
    - `FRONTEND_URL` - za sada može biti `http://localhost:4200` (ažuriraćeš posle Faze 3)
-   - `API_URL` - Render će automatski dati URL (npr. `https://elementer-backend.onrender.com`)
+   - `API_URL` - **VAŽNO**: Render backend URL (npr. `https://neatcommit.onrender.com`)
+     - Ovo se koristi za GitHub OAuth redirect URI i webhook callback-ove
+     - Mora biti tačan URL sa `https://`
+     - Render ne postavlja ovo automatski - moraš ručno dodati!
 
 6. **Deploy**:
    - Render će automatski pokrenuti build
@@ -218,7 +221,96 @@ Kompletan vodič za deployovanje aplikacije na free servere u 3 faze.
 
 ---
 
-## 🟡 FAZA 3: Frontend (Render Static Site - PREPORUČENO)
+## 🟡 FAZA 3: Frontend (Vercel - PREPORUČENO)
+
+> **Napomena**: Render Static Site ima problema sa SPA routing-om. Vercel ima bolju podršku za Angular SPA aplikacije.
+
+### Preduslovi:
+- ✅ Backend već radi (Faza 2)
+- ✅ GitHub repo sa frontend kodom
+- ✅ Vercel nalog (besplatno - sign up sa GitHub)
+
+### Zašto Vercel?
+- ✅ Besplatno zauvek
+- ✅ Ne "spava" kao Heroku
+- ✅ Brže učitavanje (Edge Network)
+- ✅ Automatski HTTPS
+- ✅ Automatski SPA routing support (ne treba `_redirects`)
+- ✅ Automatski build optimizacija
+- ✅ Preview deployments za svaki PR
+
+### Koraci:
+
+1. **Ažuriraj `environment.prod.ts`**:
+   ```typescript
+   export const environment = {
+     production: true,
+     apiUrl: 'https://your-backend.onrender.com', // Backend URL iz Faze 2
+     githubAppName: 'your-app-name',
+   };
+   ```
+   **VAŽNO**: Ažuriraj `apiUrl` sa tačnim Render backend URL-om!
+
+2. **Kreiraj Vercel Account**:
+   - Idi na https://vercel.com
+   - Klikni **Sign Up** → **Continue with GitHub**
+   - Autorizuj Vercel da pristupa tvojim repozitorijumima
+
+3. **Deploy na Vercel**:
+   - **Vercel Dashboard** → **Add New** → **Project**
+   - **Import Git Repository**: Izaberi GitHub repo
+   - **Configure Project**:
+     - **Framework Preset**: Angular (automatski detektuje)
+     - **Root Directory**: `frontend`
+     - **Build Command**: `npm run build`
+     - **Output Directory**: `dist/frontend/browser`
+     - **Install Command**: `npm install`
+   - Klikni **Deploy**
+
+4. **Vercel će automatski**:
+   - Build-ovati Angular aplikaciju
+   - Deploy-ovati na Edge Network
+   - Dodeliti URL (npr. `https://elementer-frontend.vercel.app`)
+
+5. **Ažuriraj Backend `FRONTEND_URL`**:
+   - Idi na Render Dashboard → Backend Web Service → Environment
+   - Ažuriraj `FRONTEND_URL` sa Vercel URL-om:
+     ```
+     FRONTEND_URL=https://elementer-frontend.vercel.app
+     ```
+   - Backend će se automatski restartovati
+
+### ✅ Provera Faze 3:
+- [ ] Vercel account kreiran
+- [ ] `environment.prod.ts` ažuriran sa backend URL-om
+- [ ] Build prošao uspešno
+- [ ] Frontend dostupan na `https://your-frontend.vercel.app`
+- [ ] Backend `FRONTEND_URL` ažuriran
+- [ ] CORS radi (frontend može da poziva backend)
+- [ ] SPA routing radi (možeš refresh-ovati bilo koju rutu)
+
+---
+
+## 🟡 ALTERNATIVA 1: Frontend na Render Static Site
+
+> **Napomena**: Render Static Site ima problema sa SPA routing-om. Preporučujemo Vercel umesto Render-a za frontend.
+
+Ako ipak želiš da koristiš Render Static Site:
+
+1. **Kreiraj Static Site na Render**:
+   - Dashboard → New → **Static Site**
+   - **Connect Repository**: Izaberi GitHub repo
+   - **Name**: `elementer-frontend`
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm install && npm run build`
+   - **Publish Directory**: `dist/frontend/browser`
+   - **Plan**: Free
+
+2. **Render možda neće pravilno servirati SPA rute** - kontaktiraj Render support ili koristi Vercel.
+
+---
+
+## 🟡 ALTERNATIVA 2: Frontend na Heroku
 
 ### Preduslovi:
 - ✅ Backend već radi (Faza 2)

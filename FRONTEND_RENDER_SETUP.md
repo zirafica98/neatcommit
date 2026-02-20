@@ -77,9 +77,11 @@ export const environment = {
 - Proveri da li je `FRONTEND_URL` tačan u backend env varijablama
 
 ### Routing ne radi (404 na refresh):
+- **Render Static Site možda ne podržava `_redirects` fajl** - Render koristi Cloudflare Workers koji možda ne čitaju `_redirects` fajl
+- **Rešenje**: Render Static Site bi trebalo automatski da servira `index.html` za sve rute koje ne postoje
 - Proveri da li je `Publish Directory` tačan (`dist/frontend/browser`)
-- Proveri da li `_redirects` fajl postoji u `public/` folderu sa sadržajem: `/*    /index.html   200`
-- Proveri da li se `_redirects` kopira u build output (trebalo bi da bude u `dist/frontend/browser/_redirects`)
+- Ako i dalje ne radi, možda treba da koristiš **Netlify** ili **Vercel** umesto Render-a za frontend (oni imaju bolji support za SPA routing)
+- Alternativno, možeš da koristiš **hash routing** (`#/auth/install`) umesto path routing (`/auth/install`)
 
 ### Frontend koristi localhost umesto production URL-a:
 - Proveri da li `angular.json` ima `fileReplacements` u production konfiguraciji

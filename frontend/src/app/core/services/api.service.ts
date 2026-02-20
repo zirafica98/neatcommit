@@ -68,8 +68,9 @@ export class ApiService {
    */
   getBlob(endpoint: string): Observable<Blob> {
     const token = localStorage.getItem('access_token');
+    const hasValidToken = token && token !== 'undefined' && token !== 'null' && token.length > 10;
     const headers = new HttpHeaders({
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(hasValidToken ? { Authorization: `Bearer ${token}` } : {}),
     });
 
     return this.http
@@ -105,9 +106,10 @@ export class ApiService {
       'Content-Type': 'application/json',
     });
 
-    // Add auth token if available
+    // Add auth token if available (ne šalji "undefined"/"null" string iz localStorage)
     const token = localStorage.getItem('access_token');
-    if (token) {
+    const hasValidToken = token && token !== 'undefined' && token !== 'null' && token.length > 10;
+    if (hasValidToken) {
       return {
         headers: headers.set('Authorization', `Bearer ${token}`),
       };
