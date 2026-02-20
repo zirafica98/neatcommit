@@ -1,3 +1,4 @@
+import { createPrivateKey } from 'crypto';
 import { App } from '@octokit/app';
 import { Octokit } from '@octokit/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
@@ -52,17 +53,23 @@ function formatPrivateKey(key: string): string {
     return formatted;
   }
 
-  // Jedan red bez newline (često na Renderu) – rekonstruišemo PEM (base64 u linijama po 64 char)
-  if (!formatted.includes('\n') && formatted.includes(PEM_BEGIN) && formatted.includes(PEM_END)) {
+  // Jedan red bez newline, ili sa razmacima umesto newline (Render/.env) – rekonstruišemo PEM
+  if (formatted.includes(PEM_BEGIN) && formatted.includes(PEM_END)) {
     const afterBegin = formatted.indexOf(PEM_BEGIN) + PEM_BEGIN.length;
     const beforeEnd = formatted.indexOf(PEM_END);
-    const middle = formatted.slice(afterBegin, beforeEnd).replace(/\s/g, '');
+    // Ukloni sve beline i bilo koji karakter koji nije base64 (A-Za-z0-9+/=)
+    const rawMiddle = formatted.slice(afterBegin, beforeEnd).replace(/\s/g, '');
+    const middle = rawMiddle.replace(/[^A-Za-z0-9+/=]/g, '');
+    if (middle.length % 4 !== 0) {
+      logger.error('Private key base64 length invalid (truncated?). Length: ' + middle.length);
+      throw new Error('GITHUB_PRIVATE_KEY base64 part looks truncated or invalid');
+    }
     const lines: string[] = [];
     for (let i = 0; i < middle.length; i += 64) {
       lines.push(middle.slice(i, i + 64));
     }
     formatted = `${PEM_BEGIN}\n${lines.join('\n')}\n${PEM_END}`;
-    logger.info('Private key had no newlines; PEM reconstructed for GitHub JWT');
+    logger.info('Private key normalized (spaces/newlines → PEM) for GitHub JWT');
     return formatted;
   }
 
@@ -104,12 +111,28 @@ try {
 export { githubApp };
 
 /**
+ * Proverava da li je PEM string zaista validan privatni ključ (Node crypto).
+ * Ako je ključ skraćen ili pogrešan, dobijamo jasan error pre slanja ka GitHubu.
+ */
+function verifyPrivateKeyPem(pem: string): void {
+  try {
+    createPrivateKey(pem);
+  } catch (e) {
+    logger.error('GITHUB_PRIVATE_KEY is not a valid PEM key (truncated or wrong format)', {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    throw new Error('GITHUB_PRIVATE_KEY is invalid or truncated. Use one line with \\n for newlines.');
+  }
+}
+
+/**
  * Generiše GitHub App JWT ručno (za zaobilazak problema "A JSON web token could not be decoded"
  * kada env varijabla na hostu (npr. Render) pokvari format).
  * GitHub očekuje: iss = App ID (integer), iat, exp (max 10 min).
  */
 function createGitHubAppJwt(): string {
   const key = formatPrivateKey(env.GITHUB_PRIVATE_KEY);
+  verifyPrivateKeyPem(key);
   const appId = parseInt(env.GITHUB_APP_ID, 10);
   if (Number.isNaN(appId)) {
     throw new Error('GITHUB_APP_ID must be a number');
