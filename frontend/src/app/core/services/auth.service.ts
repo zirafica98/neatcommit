@@ -192,9 +192,13 @@ export class AuthService {
   /**
    * Set current user
    */
-  setUser(user: User): void {
+  setUser(user: User | null): void {
     this.currentUserSubject.next(user);
-    localStorage.setItem('user', JSON.stringify(user));
+    if (user != null) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
   }
 
   /**
@@ -202,14 +206,16 @@ export class AuthService {
    */
   private loadUserFromStorage(): void {
     const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        this.currentUserSubject.next(user);
-      } catch (error) {
-        console.error('Error parsing user from storage:', error);
-        localStorage.removeItem('user');
-      }
+    if (!userStr || userStr === 'undefined' || userStr === 'null') {
+      if (userStr) localStorage.removeItem('user');
+      return;
+    }
+    try {
+      const user = JSON.parse(userStr);
+      this.currentUserSubject.next(user);
+    } catch (error) {
+      console.error('Error parsing user from storage:', error);
+      localStorage.removeItem('user');
     }
   }
 }
