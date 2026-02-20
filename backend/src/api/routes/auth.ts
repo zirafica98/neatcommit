@@ -335,9 +335,12 @@ router.get('/github/callback', async (req: Request, res: Response) => {
             });
             logger.info('Installation created from GitHub API in callback', { installationId });
           } catch (apiError) {
+            const msg = apiError instanceof Error ? apiError.message : String(apiError);
+            const fromGitHubApi = msg.startsWith('GitHub API ');
             logger.error('Failed to create installation from GitHub API', {
               installationId,
-              error: apiError instanceof Error ? apiError.message : String(apiError),
+              error: msg,
+              source: fromGitHubApi ? 'our JWT request to GitHub' : 'createAppAuth fallback',
             });
             return res.redirect(`${env.FRONTEND_URL}/auth/login?error=installation_not_found`);
           }

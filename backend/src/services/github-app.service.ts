@@ -138,12 +138,19 @@ function createGitHubAppJwt(): string {
     throw new Error('GITHUB_APP_ID must be a number');
   }
   const now = Math.floor(Date.now() / 1000);
+  // GitHub: iat može biti do 60s u prošlosti (clock drift); exp max 10 min; iss = App ID (string ili int)
   const payload = {
-    iss: appId,
-    iat: now,
+    iss: appId, // GitHub prihvata i number i string
+    iat: now - 60, // 60s u prošlosti zbog clock skew na hostu (npr. Render)
     exp: now + 600, // 10 min
   };
-  return jwt.sign(payload, key, { algorithm: 'RS256' });
+  const signed = jwt.sign(payload, key, { algorithm: 'RS256' });
+  // JWT ne sme imati newline/space u headeru
+  if (/\s/.test(signed)) {
+    logger.error('Generated JWT contains whitespace – will break Authorization header');
+    throw new Error('JWT must not contain whitespace');
+  }
+  return signed;
 }
 
 /**
@@ -151,6 +158,7 @@ function createGitHubAppJwt(): string {
  * Koristi se kada createAppAuth vraća "A JSON web token could not be decoded".
  */
 async function getInstallationTokenViaApi(installationId: number): Promise<string> {
+  logger.info('Getting installation token via manual JWT (GitHub API)', { installationId });
   let token: string;
   try {
     token = createGitHubAppJwt();
@@ -164,6 +172,7 @@ async function getInstallationTokenViaApi(installationId: number): Promise<strin
     logger.error('Generated JWT is invalid (wrong structure)');
     throw new Error('Generated JWT is invalid');
   }
+  // GitHub zahteva User-Agent; bez njega mogu da odbiju zahtev
   const res = await fetch(
     `https://api.github.com/app/installations/${installationId}/access_tokens`,
     {
@@ -172,11 +181,12 @@ async function getInstallationTokenViaApi(installationId: number): Promise<strin
         Accept: 'application/vnd.github+json',
         Authorization: `Bearer ${token}`,
         'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'Elementer-Backend-GitHub-App',
       },
     }
   );
+  const body = await res.text();
   if (!res.ok) {
-    const body = await res.text();
     let errMsg = body;
     try {
       const j = JSON.parse(body);
@@ -184,6 +194,11 @@ async function getInstallationTokenViaApi(installationId: number): Promise<strin
     } catch {
       // use body as is
     }
+    logger.error('GitHub API rejected our JWT', {
+      status: res.status,
+      body: errMsg,
+      installationId,
+    });
     throw new Error(`GitHub API ${res.status}: ${errMsg}`);
   }
   const data = (await res.json()) as { token: string };
@@ -200,12 +215,13 @@ async function getInstallationToken(installationId: number): Promise<string> {
     logger.debug('✅ Installation token obtained (manual JWT)', { installationId });
     return token;
   } catch (manualError) {
-    logger.warn('Manual JWT installation token failed, trying createAppAuth', {
+    logger.warn('Manual JWT installation token failed, trying createAppAuth fallback', {
       installationId,
       error: manualError instanceof Error ? manualError.message : String(manualError),
     });
   }
 
+  logger.info('Trying createAppAuth for installation token', { installationId });
   try {
     const auth = createAppAuth({
       appId: env.GITHUB_APP_ID,
