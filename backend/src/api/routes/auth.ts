@@ -270,80 +270,27 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         logger.warn('Installation not found in callback - webhook may not have processed yet', {
           installationId,
         });
-        // Sačekaj malo i probaj ponovo (webhook možda još nije obradjen)
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
+        // Sačekaj 5s pa probaj ponovo (webhook obično stigne za par sekundi)
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         let resolvedInstallation = await prisma.installation.findUnique({
           where: { installationId: installationId },
           include: { user: true },
         });
-
-        // Ako i dalje nema u bazi, kreiraj instalaciju iz GitHub API-ja (ne oslanjaj se na webhook)
+        // Još jedan retry posle 5s
         if (!resolvedInstallation) {
-          try {
-            const { getInstallationOctokit } = await import('../../services/github-app.service');
-            const octokit = await getInstallationOctokit(installationId);
-            const installationInfo = await octokit.rest.apps.getInstallation({
-              installation_id: installationId,
-            });
-            const account = installationInfo.data.account;
-            const accountId = account?.id;
-            if (!accountId) {
-              logger.error('GitHub installation has no account', { installationId });
-              return res.redirect(`${env.FRONTEND_URL}/auth/login?error=installation_not_found`);
-            }
-            const accountLogin = 'login' in account ? account.login : (account as any).slug;
-            const accountType = (account as any).type || 'User';
-            const targetType = installationInfo.data.target_type || 'User';
-
-            let user = await prisma.user.findUnique({
-              where: { githubId: accountId },
-            });
-            if (!user) {
-              const name = 'name' in account ? (account as any).name : null;
-              user = await prisma.user.create({
-                data: {
-                  githubId: accountId,
-                  username: accountLogin || 'unknown',
-                  email: null,
-                  avatarUrl: account.avatar_url || null,
-                  name: name || null,
-                },
-              });
-              logger.info('User created from installation callback (API fallback)', { userId: user.id });
-            }
-
-            resolvedInstallation = await prisma.installation.upsert({
-              where: { installationId: installationId },
-              create: {
-                installationId: installationId,
-                accountId: accountId,
-                accountType: accountType,
-                accountLogin: accountLogin || 'unknown',
-                targetType: targetType,
-                userId: user.id,
-              },
-              update: {
-                accountId: accountId,
-                accountType: accountType,
-                accountLogin: accountLogin || 'unknown',
-                targetType: targetType,
-                userId: user.id,
-                updatedAt: new Date(),
-              },
-              include: { user: true },
-            });
-            logger.info('Installation created from GitHub API in callback', { installationId });
-          } catch (apiError) {
-            const msg = apiError instanceof Error ? apiError.message : String(apiError);
-            const fromGitHubApi = msg.startsWith('GitHub API ');
-            logger.error('Failed to create installation from GitHub API', {
-              installationId,
-              error: msg,
-              source: fromGitHubApi ? 'our JWT request to GitHub' : 'createAppAuth fallback',
-            });
-            return res.redirect(`${env.FRONTEND_URL}/auth/login?error=installation_not_found`);
-          }
+          await new Promise((resolve) => setTimeout(resolve, 5000));
+          resolvedInstallation = await prisma.installation.findUnique({
+            where: { installationId: installationId },
+            include: { user: true },
+          });
+        }
+        // I dalje nema zapisa – ne zovemo GitHub API (JWT problem). Šaljemo korisnika na
+        // "čekaj" stranicu koja ga za ~10s vrati ovde; do tada webhook će verovatno upisati instalaciju.
+        if (!resolvedInstallation) {
+          logger.info('Redirecting to installation-wait page (webhook delay)', { installationId });
+          const waitUrl = new URL(`${env.FRONTEND_URL}/auth/installation-wait`);
+          waitUrl.searchParams.set('installation_id', String(installationId));
+          return res.redirect(waitUrl.toString());
         }
 
         if (resolvedInstallation?.user) {

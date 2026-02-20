@@ -10,6 +10,10 @@ export const authRoutes: Routes = [
     loadComponent: () => import('./install/install.component').then(m => m.InstallComponent),
   },
   {
+    path: 'installation-wait',
+    loadComponent: () => import('./installation-wait/installation-wait.component').then(m => m.InstallationWaitComponent),
+  },
+  {
     path: 'callback',
     loadComponent: () => import('./callback/callback.component').then(m => m.CallbackComponent),
   },

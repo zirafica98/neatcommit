@@ -1,0 +1,24 @@
+<div class="wait-container">
+  <mat-card class="wait-card">
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>schedule</mat-icon>
+        Completing your setup
+      </mat-card-title>
+      <mat-card-subtitle>
+        GitHub is registering your installation. We'll retry in a moment.
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="status">
+        <mat-spinner [diameter]="48"></mat-spinner>
+        <p class="countdown" *ngIf="countdown > 0">Retrying in {{ countdown }} seconds...</p>
+        <p class="countdown" *ngIf="countdown <= 0">Redirecting...</p>
+      </div>
+      <button mat-raised-button color="primary" (click)="retryNow()">
+        <mat-icon>refresh</mat-icon>
+        Retry now
+      </button>
+    </mat-card-content>
+  </mat-card>
+</div>
