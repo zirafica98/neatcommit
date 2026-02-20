@@ -156,19 +156,39 @@ mat-toolbar {
   gap: 12px;
 }
 
-.avatar {
+.avatar-button {
+  padding: 0;
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-wrapper {
+  display: block;
   width: 40px;
   height: 40px;
   border-radius: 50%;
+  overflow: hidden;
   border: 3px solid white;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  
-  &:hover {
-    transform: scale(1.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+  flex-shrink: 0;
+
+  .avatar-button:hover & {
+    transform: scale(1.1);
     box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
     border-color: var(--primary-color);
   }
+}
+
+.avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .user-info {
