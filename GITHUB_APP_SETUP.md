@@ -24,12 +24,14 @@ Ovaj vodič će ti pomoći da učiniš svoju GitHub App javno dostupnom i testir
 2. Ako je trenutno **"Private"**, promeni na **"Public"**
 3. Ovo omogućava drugim korisnicima da instaliraju tvoju app
 
-### 1.3. Ažuriraj Webhook URL
+### 1.3. Ažuriraj Webhook URL (obavezno tačno)
 
 1. U sekciji **"Webhook"**:
-   - **Webhook URL**: `https://your-backend-domain.com/webhook`
+   - **Webhook URL**: `https://your-backend-domain.com/webhook/github`  
+     (mora biti **/webhook/github**, ne samo /webhook)
    - **Webhook secret**: Koristi isti `GITHUB_WEBHOOK_SECRET` iz `.env` fajla
    - **Content type**: `application/json`
+2. **Subscribe to events** mora uključivati **Installation** (da se instalacija upiše u bazu).
 
 2. **Webhook events** - Omogući sledeće evente:
    - ✅ `push`

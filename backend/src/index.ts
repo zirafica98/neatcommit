@@ -1279,7 +1279,7 @@ async function startServer() {
 
     const redisConnected = await testRedisConnection();
     if (!redisConnected) {
-      throw new Error('Redis connection failed');
+      logger.warn('Redis not available – server will start anyway. Queue (PR analysis) will not work until Redis is connected.');
     }
 
     app.listen(PORT, () => {

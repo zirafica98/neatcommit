@@ -353,13 +353,20 @@ async function handleInstallationEvent(payload: any) {
 
   switch (action) {
     case 'created':
-      await handleInstallationCreated(installation, sender, repositories);
+      try {
+        await handleInstallationCreated(installation, sender, repositories);
+      } catch (err) {
+        logger.error('❌ handleInstallationCreated failed', {
+          installationId: installation?.id,
+          error: err instanceof Error ? err.message : String(err),
+          stack: err instanceof Error ? err.stack : undefined,
+        });
+        throw err;
+      }
       break;
-
     case 'deleted':
       await handleInstallationDeleted(installation);
       break;
-
     default:
       logger.debug('Unhandled installation action', { action });
   }
@@ -369,12 +376,11 @@ async function handleInstallationEvent(payload: any) {
  * Sačuva novu instalaciju u bazi
  */
 async function handleInstallationCreated(installation: any, sender: any, repositories: any[] = []) {
+  const installationId = installation?.id;
+  logger.info('handleInstallationCreated started', { installationId });
   try {
-    // Proveri da li installation ima account
     if (!installation.account) {
-      logger.warn('⚠️ Installation missing account information', {
-        installationId: installation.id,
-      });
+      logger.warn('⚠️ Installation missing account information', { installationId });
       return;
     }
 
@@ -436,18 +442,18 @@ async function handleInstallationCreated(installation: any, sender: any, reposit
         accountType: installation.account.type || 'User',
         accountLogin: installation.account.login || 'unknown',
         targetType: installation.target_type || 'User',
-        userId: user?.id || null, // Poveži sa korisnikom ako postoji
+        userId: user?.id || null,
       },
       update: {
         accountId: installation.account.id,
         accountType: installation.account.type || 'User',
         accountLogin: installation.account.login || 'unknown',
         targetType: installation.target_type || 'User',
-        // Ažuriraj userId samo ako je null (ne prepisuj postojeću vezu)
         ...(user && { userId: user.id }),
         updatedAt: new Date(),
       },
     });
+    logger.info('✅ Installation saved to DB', { installationId, accountLogin: installation.account?.login });
 
     // Pronađi installation u bazi
     const dbInstallation = await prisma.installation.findUnique({
@@ -470,9 +476,7 @@ async function handleInstallationCreated(installation: any, sender: any, reposit
       
       for (const repo of reposToSave) {
         await prisma.repository.upsert({
-          where: {
-            githubRepoId: repo.id,
-          },
+          where: { githubRepoId: repo.id },
           create: {
             installationId: dbInstallation.id,
             githubRepoId: repo.id,

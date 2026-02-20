@@ -287,7 +287,7 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         // I dalje nema zapisa – ne zovemo GitHub API (JWT problem). Šaljemo korisnika na
         // "čekaj" stranicu koja ga za ~10s vrati ovde; do tada webhook će verovatno upisati instalaciju.
         if (!resolvedInstallation) {
-          logger.info('Redirecting to installation-wait page (webhook delay)', { installationId });
+          logger.warn('Redirecting to installation-wait – installation still not in DB. Check: 1) GitHub App → Webhook URL = ' + `${env.API_URL}/webhook/github . 2) Subscribe to "Installation" events.`, { installationId });
           const waitUrl = new URL(`${env.FRONTEND_URL}/auth/installation-wait`);
           waitUrl.searchParams.set('installation_id', String(installationId));
           return res.redirect(waitUrl.toString());
