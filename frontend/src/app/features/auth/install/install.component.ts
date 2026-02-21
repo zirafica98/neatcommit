@@ -104,7 +104,7 @@ export class InstallComponent implements OnInit, OnDestroy {
         if (response?.accessToken) localStorage.setItem('access_token', response.accessToken);
         if (response?.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
         if (response?.user) this.authService.setUser(response.user);
-        this.router.navigate(['/dashboard']);
+        this.router.navigate(['/']);
       },
       error: (error) => {
         this.checking = false;

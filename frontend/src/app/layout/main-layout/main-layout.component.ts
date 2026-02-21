@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule, NavigationEnd } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -9,7 +9,9 @@ import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { map } from 'rxjs/operators';
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { map, takeUntil, filter } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { ThemeService } from '../../core/services/theme.service';
 
@@ -31,13 +33,40 @@ import { ThemeService } from '../../core/services/theme.service';
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
 })
-export class MainLayoutComponent {
+export class MainLayoutComponent implements OnInit, OnDestroy {
   sidenavOpened = true;
+  isMobile = false;
+  private destroy$ = new Subject<void>();
 
   constructor(
     private authService: AuthService,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private breakpointObserver: BreakpointObserver,
+    private router: Router,
   ) {}
+
+  ngOnInit(): void {
+    this.breakpointObserver
+      .observe('(max-width: 768px)')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((state) => {
+        this.isMobile = state.matches;
+        this.sidenavOpened = !this.isMobile;
+      });
+    this.router.events
+      .pipe(
+        takeUntil(this.destroy$),
+        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      )
+      .subscribe(() => {
+        if (this.isMobile) this.sidenavOpened = false;
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   get currentUser$() {
     return this.authService.currentUser$;
@@ -63,6 +92,10 @@ export class MainLayoutComponent {
 
   toggleSidenav(): void {
     this.sidenavOpened = !this.sidenavOpened;
+  }
+
+  closeSidenavIfMobile(): void {
+    if (this.isMobile) this.sidenavOpened = false;
   }
 
   toggleTheme(): void {

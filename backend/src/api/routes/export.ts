@@ -9,6 +9,7 @@ import { verifyAccessToken } from '../../services/auth.service';
 import { ExportService } from '../../services/export.service';
 import prisma from '../../config/database';
 import { logger } from '../../utils/logger';
+import { validateParams, validateQuery, validationSchemas } from '../../middleware/validation';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ const router = Router();
  * 
  * Export review u PDF format
  */
-router.get('/review/:id/pdf', async (req: Request, res: Response) => {
+router.get('/review/:id/pdf', validateParams(validationSchemas.reviewId), async (req: Request, res: Response) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
@@ -36,15 +37,16 @@ router.get('/review/:id/pdf', async (req: Request, res: Response) => {
       include: {
         issues: true,
         repository: true,
+        installation: { select: { userId: true } },
       },
     });
 
     if (!review) {
       return res.status(404).json({ error: 'Review not found' });
     }
-
-    // Uklonjen userId check - dozvoljavamo export svih review-a
-    // (kao što dashboard dohvata sve podatke)
+    if (review.installation?.userId !== payload.userId) {
+      return res.status(403).json({ error: 'Forbidden: you do not have access to this review' });
+    }
 
     logger.info('Exporting review to PDF', {
       reviewId,
@@ -75,7 +77,7 @@ router.get('/review/:id/pdf', async (req: Request, res: Response) => {
  * 
  * Export issues u CSV format
  */
-router.get('/issues/csv', async (req: Request, res: Response) => {
+router.get('/issues/csv', validateQuery(validationSchemas.exportIssuesQuery), async (req: Request, res: Response) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
@@ -89,17 +91,29 @@ router.get('/issues/csv', async (req: Request, res: Response) => {
 
     const { severity, reviewId } = req.query;
 
-    logger.info('Export issues - User ID from token', { userId: payload.userId });
+    // Samo issues iz review-a koji pripadaju korisnikovim instalacijama
+    const userInstallations = await prisma.installation.findMany({
+      where: { userId: payload.userId },
+      select: { id: true },
+    });
+    const installationIds = userInstallations.map((i) => i.id);
+    const allowedReviews = await prisma.review.findMany({
+      where: { installationId: { in: installationIds } },
+      select: { id: true },
+    });
+    const allowedReviewIds = allowedReviews.map((r) => r.id);
+    if (allowedReviewIds.length === 0) {
+      const emptyCsv = ['Title', 'Severity', 'Category', 'Description', 'File Path', 'Line Number', 'Created At'].join(',');
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="issues.csv"');
+      return res.send('\uFEFF' + emptyCsv);
+    }
 
-    // Koristimo isti pristup kao dashboard - bez userId filtera
-    // jer reviews mogu imati userId=null ili biti povezani preko installation-a
-    const where: any = {};
-
+    const where: any = { reviewId: { in: allowedReviewIds } };
     if (severity && severity !== 'all') {
       where.severity = severity;
     }
-
-    if (reviewId) {
+    if (reviewId && allowedReviewIds.includes(reviewId as string)) {
       where.reviewId = reviewId;
     }
 

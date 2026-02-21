@@ -1,10 +1,10 @@
 /**
  * Auth Routes
- * 
  * GitHub OAuth i JWT token management
  */
 
 import { Router, Request, Response } from 'express';
+import { z } from 'zod';
 import env from '../../config/env';
 import { logger } from '../../utils/logger';
 import {
@@ -21,16 +21,18 @@ import prisma from '../../config/database';
 
 const router = Router();
 
-// Log all requests to auth router
-router.use((req, _res, next) => {
-  logger.info(`🔵 AUTH ROUTER MIDDLEWARE: ${req.method} ${req.path}`, {
-    method: req.method,
-    path: req.path,
-    url: req.url,
-    originalUrl: req.originalUrl,
-    baseUrl: req.baseUrl,
-  });
-  next();
+// Zod schemas za validaciju (bezbednost: ograničenje dužine, tipovi)
+const refreshBodySchema = z.object({ refreshToken: z.string().min(10).max(2000) });
+const codeBodySchema = z.object({ code: z.string().min(10).max(500) });
+const registerBodySchema = z.object({
+  username: z.string().min(1).max(100).trim(),
+  email: z.string().email().max(255),
+  password: z.string().min(8).max(200),
+  name: z.string().max(200).trim().optional(),
+});
+const loginBodySchema = z.object({
+  username: z.string().min(1).max(256).trim(),
+  password: z.string().min(1).max(200),
 });
 
 /**
@@ -77,13 +79,11 @@ router.get('/github', (_req: Request, res: Response) => {
  */
 router.get('/github/check', async (req: Request, res: Response) => {
   try {
-    const { username } = req.query;
-
+    const rawUsername = req.query.username;
+    const username = typeof rawUsername === 'string' && rawUsername.length <= 256 ? rawUsername.trim() : null;
     if (!username) {
       return res.status(400).json({ error: 'Username is required' });
     }
-
-    logger.info('Checking installation for username', { username });
 
     // Pronađi korisnika po username-u
     const user = await prisma.user.findUnique({
@@ -475,13 +475,11 @@ router.get('/github/callback', async (req: Request, res: Response) => {
  */
 router.post('/github/callback', async (req: Request, res: Response) => {
   try {
-    const { code } = req.body;
-
-    if (!code) {
-      return res.status(400).json({ error: 'Missing code' });
+    const parsed = codeBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json(env.NODE_ENV === 'production' ? { error: 'Invalid request' } : { error: 'Invalid request', details: parsed.error.flatten() });
     }
-
-    logger.info('GitHub OAuth callback (POST)', { code: code.substring(0, 10) + '...' });
+    const { code } = parsed.data;
 
     // 1. Razmeni code za access token
     const accessToken = await exchangeCodeForToken(code);
@@ -531,11 +529,11 @@ router.post('/github/callback', async (req: Request, res: Response) => {
  */
 router.post('/refresh', async (req: Request, res: Response) => {
   try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken) {
-      return res.status(400).json({ error: 'Missing refresh token' });
+    const parsed = refreshBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Missing or invalid refresh token' });
     }
+    const { refreshToken } = parsed.data;
 
     // Verifikuj refresh token
     const payload = verifyRefreshToken(refreshToken);
@@ -624,12 +622,11 @@ router.get('/me', async (req: Request, res: Response) => {
  */
 router.post('/register', async (req: Request, res: Response) => {
   try {
-    const { username, email, password, name } = req.body;
-
-    // Validacija
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'Username, email, and password are required' });
+    const parsed = registerBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json(env.NODE_ENV === 'production' ? { error: 'Invalid request' } : { error: 'Invalid request', details: parsed.error.flatten() });
     }
+    const { username, email, password, name } = parsed.data;
 
     // Proveri password strength
     const passwordValidation = validatePasswordStrength(password);
@@ -703,25 +700,12 @@ router.post('/register', async (req: Request, res: Response) => {
  * Login sa username/password-om (za password-based korisnike)
  */
 router.post('/login', async (req: Request, res: Response) => {
-  logger.info('🔵🔵🔵 LOGIN ENDPOINT CALLED - START');
-  logger.info(`🔵 Request body: ${JSON.stringify(req.body, null, 2)}`);
-  logger.info(`🔵 Request method: ${req.method}`);
-  logger.info(`🔵 Request path: ${req.path}`);
-  logger.info(`🔵 Request url: ${req.url}`);
-  
   try {
-    logger.info('🔵 Inside try block');
-    logger.info('Login attempt received', { username: req.body?.username, bodyKeys: Object.keys(req.body || {}) });
-    const { username, password } = req.body;
-    
-    console.log('🔵 Extracted credentials', { username, hasPassword: !!password });
-
-    if (!username || !password) {
-      logger.warn('Login attempt missing credentials', { hasUsername: !!username, hasPassword: !!password });
+    const parsed = loginBodySchema.safeParse(req.body);
+    if (!parsed.success) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
-
-    logger.info(`🔵 Searching for user: ${username}`);
+    const { username, password } = parsed.data;
     // Pronađi korisnika po username ili email-u
     const user = await prisma.user.findFirst({
       where: {

@@ -3,6 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 2rem;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
@@ -151,6 +152,7 @@ mat-form-field {
   padding: 0.75rem;
   font-size: 1rem;
   border: 2px solid #e0e0e0;
+  min-height: 48px;
 
   mat-icon {
     margin-right: 0.5rem;
@@ -253,19 +255,50 @@ mat-form-field {
 @media (max-width: 768px) {
   .login-container {
     padding: 1rem;
+    align-items: flex-start;
+    padding-top: max(2rem, env(safe-area-inset-top));
   }
 
   .login-card {
+    margin: 0 auto;
+    max-width: 100%;
+
     mat-card-header {
-      padding: 1.5rem 1.5rem 0.75rem;
+      padding: 1.5rem 1.25rem 0.75rem;
 
       mat-card-title {
         font-size: 1.5rem;
+
+        mat-icon {
+          font-size: 1.75rem;
+          width: 1.75rem;
+          height: 1.75rem;
+        }
+      }
+
+      mat-card-subtitle {
+        font-size: 0.9rem;
       }
     }
 
     mat-card-content {
-      padding: 1rem 1.5rem 1.5rem;
+      padding: 1.25rem 1.25rem 1.5rem;
     }
+  }
+
+  .github-button,
+  .login-button {
+    min-height: 48px;
+    padding: 0.875rem;
+  }
+
+  .admin-login-link {
+    bottom: max(1rem, env(safe-area-inset-bottom, 1rem));
+    right: max(1rem, env(safe-area-inset-right, 1rem));
+  }
+
+  .admin-link-button {
+    min-height: 44px;
+    padding: 0.625rem 1rem;
   }
 }

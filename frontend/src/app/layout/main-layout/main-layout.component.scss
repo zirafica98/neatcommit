@@ -135,10 +135,13 @@ mat-toolbar {
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   padding: 0 20px;
   height: 70px;
-  
+  min-height: 70px;
+
   button[mat-icon-button] {
     transition: all 0.3s ease;
-    
+    min-width: 44px;
+    min-height: 44px;
+
     &:hover {
       background: rgba(102, 126, 234, 0.1);
       transform: scale(1.1);
@@ -210,21 +213,65 @@ mat-toolbar {
   max-width: 1600px;
   margin: 0 auto;
   min-height: calc(100vh - 70px);
-  
+
   @media (max-width: 768px) {
-    padding: 16px;
+    padding: 12px 16px;
+    min-height: calc(100vh - 56px);
   }
 }
 
-/* Mobile Responsive */
+/* Mobile: overlay sidenav, touch-friendly, compact toolbar */
 @media (max-width: 768px) {
   .sidenav {
-    width: 100%;
-    max-width: 280px;
+    width: min(100%, 300px);
+    max-width: 300px;
   }
-  
+
+  .sidenav-header {
+    padding: 20px 16px;
+
+    h2 {
+      font-size: 22px;
+
+      mat-icon {
+        font-size: 28px;
+        width: 28px;
+        height: 28px;
+      }
+    }
+  }
+
+  .nav-menu a {
+    min-height: 48px;
+    padding: 14px 20px;
+    margin: 4px 12px;
+    font-size: 15px;
+
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+  }
+
+  mat-toolbar {
+    height: 56px;
+    padding: 0 12px;
+    min-height: 56px;
+  }
+
+  .avatar-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .avatar-wrapper {
+    width: 36px;
+    height: 36px;
+  }
+
   .main-content {
-    padding: 16px;
+    padding: 12px 16px;
   }
 }
 

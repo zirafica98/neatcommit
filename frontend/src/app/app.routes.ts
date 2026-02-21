@@ -14,8 +14,8 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'dashboard',
         pathMatch: 'full',
+        loadComponent: () => import('./layout/home-redirect/home-redirect.component').then(m => m.HomeRedirectComponent),
       },
       {
         path: 'dashboard',

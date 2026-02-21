@@ -1,7 +1,9 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import env from './config/env';
 import { logger } from './utils/logger';
+import { idSchema } from './middleware/validation';
 import { connectDatabase } from './config/database';
 import prisma from './config/database';
 import { testRedisConnection } from './config/redis';
@@ -15,22 +17,33 @@ initSentry();
 
 const app: Express = express();
 
+app.disable('x-powered-by');
+
 // Trust proxy - potrebno za rate limiter kada se koristi X-Forwarded-For header
 app.set('trust proxy', true);
 
-// Sentry setup (samo u production) - middleware se dodaje kasnije u error handler sekciji
+// Security headers. HSTS samo u production (na localhost remeti development).
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  ...(env.NODE_ENV === 'production'
+    ? { hsts: { maxAge: 31536000, includeSubDomains: true, preload: true } }
+    : { hsts: false }),
+}));
 
-// Middleware
+// CORS: samo dozvoljeni origin i metode
 app.use(
   cors({
     origin: env.FRONTEND_URL,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
-// express.json() sa verify opcijom da sačuva raw body za webhook rute
-// Ovo je najbolje rešenje jer sačuva raw body pre parsiranja
+// Ograničenje veličine body-ja (zaštita od DoS)
 app.use(express.json({
+  limit: '500kb',
   verify: (req: any, _res, buf, _encoding) => {
     // Ako je webhook ruta, sačuvaj raw body kao Buffer
     // Proveri i po path i po originalUrl jer path može biti undefined u verify callback-u
@@ -48,19 +61,15 @@ app.use(express.json({
     }
   }
 }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
-// Request logging
+// Request logging (u production samo debug/warn, da ne otkrivamo putanje)
 app.use((req: Request, _res: Response, next: NextFunction) => {
-  logger.info(`REQUEST RECEIVED: ${req.method} ${req.path}`, {
-    method: req.method,
-    path: req.path,
-    url: req.url,
-    originalUrl: req.originalUrl,
-    baseUrl: req.baseUrl,
-    ip: req.ip,
-    userAgent: req.get('user-agent'),
-  });
+  if (env.NODE_ENV === 'development') {
+    logger.info(`REQUEST: ${req.method} ${req.path}`, { path: req.path, ip: req.ip });
+  } else {
+    logger.debug(`REQUEST: ${req.method} ${req.path}`);
+  }
   next();
 });
 
@@ -68,147 +77,108 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 import { apiLimiter, authLimiter, webhookLimiter, subscriptionLimiter } from './middleware/rate-limiter';
 
 // Apply general rate limiting to all API routes
-// apiLimiter ima skip funkciju koja preskače /auth i /subscription rute
 app.use('/api', (req, res, next) => {
-  logger.info(`API middleware called: ${req.path}`, {
-    path: req.path,
-    url: req.url,
-    originalUrl: req.originalUrl,
-  });
-  // Proveri da li je auth ruta - ako jeste, preskoči apiLimiter
-  if (req.path.startsWith('/auth')) {
-    logger.info('Skipping apiLimiter for auth route');
-    return next();
-  }
-  logger.info('Applying apiLimiter');
+  if (req.path.startsWith('/auth')) return next();
   return apiLimiter(req, res, next);
 });
 
-// Health check (bez rate limiting)
+// Health check (bez rate limiting). U production ne izlažemo detalje (uptime, memory).
 app.get('/health', async (_req: Request, res: Response) => {
   try {
-    // Proveri status svih servisa
     const dbStatus = await prisma.$queryRaw`SELECT 1`.then(() => 'connected').catch(() => 'disconnected');
     const redisStatus = await testRedisConnection().then(() => 'connected').catch(() => 'disconnected');
-    
-    const health = {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      environment: env.NODE_ENV,
-      services: {
-        database: dbStatus,
-        redis: redisStatus,
-        queue: 'connected', // BullMQ se automatski povezuje
-      },
-      uptime: process.uptime(),
-      memory: {
-        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-        unit: 'MB',
-      },
-    };
-
-    // Ako bilo koji servis nije povezan, vrati 503
     const allServicesOk = dbStatus === 'connected' && redisStatus === 'connected';
     const statusCode = allServicesOk ? 200 : 503;
-    
-    res.status(statusCode).json(health);
+
+    if (env.NODE_ENV === 'production') {
+      res.status(statusCode).json({ status: allServicesOk ? 'ok' : 'degraded', timestamp: new Date().toISOString() });
+      return;
+    }
+
+    res.status(statusCode).json({
+      status: allServicesOk ? 'ok' : 'degraded',
+      timestamp: new Date().toISOString(),
+      environment: env.NODE_ENV,
+      services: { database: dbStatus, redis: redisStatus, queue: 'connected' },
+      uptime: process.uptime(),
+      memory: { used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024), total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024), unit: 'MB' },
+    });
   } catch (error) {
     logger.error('Health check failed:', error);
-    res.status(503).json({
-      status: 'error',
-      timestamp: new Date().toISOString(),
-      error: 'Health check failed',
-    });
+    res.status(503).json({ status: 'error', timestamp: new Date().toISOString() });
   }
 });
 
-// Test queue endpoint (for development)
-app.post('/test/queue', async (_req: Request, res: Response) => {
-  try {
-    const job = await analysisQueue.add('analyze-pr', {
-      installationId: 123,
-      owner: 'test-owner',
-      repo: 'test-repo',
-      pullNumber: 1,
-      sha: 'abc123',
-      prId: 'test-pr-id',
-      prUrl: 'https://github.com/test-owner/test-repo/pull/1',
-      prTitle: 'Test PR',
-    });
-
-    res.json({
-      message: 'Job added to queue',
-      jobId: job.id,
-    });
-  } catch (error) {
-    logger.error('Failed to add job to queue:', error);
-    res.status(500).json({ error: 'Failed to add job' });
-  }
-});
-
-// Test webhook endpoint (for development - simulates GitHub webhook)
-app.post('/test/webhook', async (req: Request, res: Response) => {
-  try {
-    const { event, payload } = req.body;
-
-    if (!event || !payload) {
-      res.status(400).json({ error: 'Missing event or payload' });
-      return;
+// Test endpoints samo u development (u production su isključeni zbog bezbednosti)
+if (env.NODE_ENV !== 'production') {
+  app.post('/test/queue', async (_req: Request, res: Response) => {
+    try {
+      const job = await analysisQueue.add('analyze-pr', {
+        installationId: 123,
+        owner: 'test-owner',
+        repo: 'test-repo',
+        pullNumber: 1,
+        sha: 'abc123',
+        prId: 'test-pr-id',
+        prUrl: 'https://github.com/test-owner/test-repo/pull/1',
+        prTitle: 'Test PR',
+      });
+      res.json({ message: 'Job added to queue', jobId: job.id });
+    } catch (error) {
+      logger.error('Failed to add job to queue:', error);
+      res.status(500).json({ error: 'Failed to add job' });
     }
+  });
 
-    logger.info('Test webhook received', { event });
-
-    // Pozovi webhook handler direktno
-    const { handleWebhookEvent } = await import('./api/routes/webhooks');
-    await handleWebhookEvent(event, payload);
-
-    res.status(200).json({ received: true, event });
-  } catch (error) {
-    logger.error('Test webhook failed:', error);
-    res.status(500).json({ error: 'Test webhook failed', message: (error as Error).message });
-  }
-});
-
-// Test analysis endpoint (for development - testira Analysis Service direktno)
-app.post('/test/analysis', async (req: Request, res: Response) => {
-  try {
-    const { code, filename } = req.body;
-
-    if (!code || !filename) {
-      res.status(400).json({ error: 'Missing code or filename' });
-      return;
+  app.post('/test/webhook', async (req: Request, res: Response) => {
+    try {
+      const { event, payload } = req.body;
+      if (!event || !payload) {
+        res.status(400).json({ error: 'Missing event or payload' });
+        return;
+      }
+      const { handleWebhookEvent } = await import('./api/routes/webhooks');
+      await handleWebhookEvent(event, payload);
+      res.status(200).json({ received: true, event });
+    } catch (error) {
+      logger.error('Test webhook failed:', error);
+      res.status(500).json({ error: 'Test webhook failed', message: (error as Error).message });
     }
+  });
 
-    logger.info('Test analysis requested', { filename, codeLength: code.length });
-
-    // Pozovi Analysis Service direktno
-    const { analyzeFile } = await import('./services/analysis.service');
-    const result = await analyzeFile(code, filename);
-
-    res.status(200).json({
-      success: true,
-      result: {
-        filename: result.filename,
-        language: result.language,
-        isSupported: result.isSupported,
-        totalIssues: result.allIssues.length,
-        criticalIssues: result.allIssues.filter((i) => i.severity === 'CRITICAL').length,
-        highIssues: result.allIssues.filter((i) => i.severity === 'HIGH').length,
-        score: result.score,
-        summary: result.summary,
-        issues: result.allIssues.slice(0, 10), // Prvih 10 issue-a
-      },
-    });
-  } catch (error) {
-    logger.error('Test analysis failed:', error);
-    res.status(500).json({
-      error: 'Test analysis failed',
-      message: (error as Error).message,
-      stack: env.NODE_ENV === 'development' ? (error as Error).stack : undefined,
-    });
-  }
-});
+  app.post('/test/analysis', async (req: Request, res: Response) => {
+    try {
+      const { code, filename } = req.body;
+      if (!code || !filename) {
+        res.status(400).json({ error: 'Missing code or filename' });
+        return;
+      }
+      const { analyzeFile } = await import('./services/analysis.service');
+      const result = await analyzeFile(code, filename);
+      res.status(200).json({
+        success: true,
+        result: {
+          filename: result.filename,
+          language: result.language,
+          isSupported: result.isSupported,
+          totalIssues: result.allIssues.length,
+          criticalIssues: result.allIssues.filter((i) => i.severity === 'CRITICAL').length,
+          highIssues: result.allIssues.filter((i) => i.severity === 'HIGH').length,
+          score: result.score,
+          summary: result.summary,
+          issues: result.allIssues.slice(0, 10),
+        },
+      });
+    } catch (error) {
+      logger.error('Test analysis failed:', error);
+      res.status(500).json({
+        error: 'Test analysis failed',
+        message: (error as Error).message,
+        stack: (error as Error).stack,
+      });
+    }
+  });
+}
 
 // API routes
 import webhookRoutes from './api/routes/webhooks';
@@ -310,8 +280,9 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
 
 app.get('/api/reviews/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    
+    const parsed = idSchema.safeParse(req.params.id);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid id' });
+    const id = parsed.data;
     // Ekstraktuj userId iz JWT tokena
     const authHeader = req.headers.authorization;
     let userId: string | null = null;
@@ -446,6 +417,7 @@ app.get('/api/issues', async (req: Request, res: Response) => {
     const reviewIds = userReviews.map((r) => r.id);
 
     const { severity, limit = '50' } = req.query;
+    const limitNum = Math.min(Math.max(1, parseInt(limit as string, 10) || 50), 100); // max 100 zbog bezbednosti
     
     // Filtriraj issues samo za reviews ovog korisnika
     const issues = await prisma.issue.findMany({
@@ -455,7 +427,7 @@ app.get('/api/issues', async (req: Request, res: Response) => {
         },
         ...(severity ? { severity: severity as string } : {}),
       },
-      take: parseInt(limit as string, 10),
+      take: limitNum,
       orderBy: [
         { severity: 'asc' },
         { createdAt: 'desc' },
@@ -954,7 +926,9 @@ app.get('/api/repositories/all', async (req: Request, res: Response) => {
 
 app.get('/api/repositories/:id', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const parsed = idSchema.safeParse(req.params.id);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid id' });
+    const id = parsed.data;
     const repository = await prisma.repository.findUnique({
       where: { id },
     });
@@ -984,7 +958,9 @@ app.get('/api/repositories/:id', async (req: Request, res: Response) => {
 
 app.post('/api/repositories/:id/enable', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const parsed = idSchema.safeParse(req.params.id);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid id' });
+    const id = parsed.data;
     const repository = await prisma.repository.update({
       where: { id },
       data: { enabled: true },
@@ -1147,7 +1123,9 @@ app.post('/api/repositories/add', async (req: Request, res: Response) => {
 
 app.post('/api/repositories/:id/disable', async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const parsed = idSchema.safeParse(req.params.id);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid id' });
+    const id = parsed.data;
     const repository = await prisma.repository.update({
       where: { id },
       data: { enabled: false },
@@ -1175,40 +1153,11 @@ app.post('/api/repositories/:id/disable', async (req: Request, res: Response) =>
 
 // API routes with rate limiting
 import authRoutes from './api/routes/auth';
-logger.info('Setting up /api/auth routes with authLimiter');
-logger.info('Auth routes type: ' + typeof authRoutes);
-const routesStack = (authRoutes as any)?.stack?.map((layer: any) => ({
-  path: layer?.route?.path || 'no path',
-  method: layer?.route?.methods || 'no method',
-  name: layer?.name || 'unknown'
-}));
-logger.info('Auth routes stack: ' + JSON.stringify(routesStack));
+app.use('/api/auth', authLimiter, authRoutes);
 
-// Test da vidimo da li se middleware uopšte izvršava
-app.use('/api/auth', (req, _res, next) => {
-  logger.info(`AUTH MIDDLEWARE CALLED: ${req.method} ${req.path}`, {
-    path: req.path,
-    method: req.method,
-    ip: req.ip,
-    url: req.url,
-    originalUrl: req.originalUrl,
-    baseUrl: req.baseUrl,
-  });
-  next();
-}, authLimiter, (req, _res, next) => {
-  logger.info(`After authLimiter, before routes: ${req.method} ${req.path}`, {
-    path: req.path,
-    url: req.url,
-    originalUrl: req.originalUrl,
-  });
-  next();
-}, authRoutes); // Strict rate limiting za auth
-
-// Test route to verify routing works
-app.post('/api/auth/test', (_req, res) => {
-  logger.info('TEST ROUTE CALLED');
-  res.json({ message: 'Test route works!' });
-});
+if (env.NODE_ENV !== 'production') {
+  app.post('/api/auth/test', (_req, res) => res.json({ message: 'Test route works!' }));
+}
 
 import documentationRoutes from './api/routes/documentation';
 // Rate limiting se primenjuje samo na generate endpoint unutar rute, ne na sve
@@ -1254,19 +1203,10 @@ app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-// 404 handler
+// 404 handler (u production ne loguj detalje putanje)
 app.use((req: Request, res: Response) => {
-  logger.info(`404 HANDLER CALLED: ${req.method} ${req.path}`, {
-    method: req.method,
-    path: req.path,
-    url: req.url,
-    originalUrl: req.originalUrl,
-    baseUrl: req.baseUrl,
-  });
-  res.status(404).json({
-    error: 'Not found',
-    path: req.path,
-  });
+  if (env.NODE_ENV === 'development') logger.info(`404: ${req.method} ${req.path}`);
+  res.status(404).json({ error: 'Not found' });
 });
 
 const PORT = parseInt(env.PORT, 10);

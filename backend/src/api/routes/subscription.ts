@@ -24,6 +24,7 @@ import {
 } from '../../services/promo-code.service';
 import { logger } from '../../utils/logger';
 import prisma from '../../config/database';
+import { validateBody, validationSchemas } from '../../middleware/validation';
 
 const router = Router();
 
@@ -205,7 +206,7 @@ router.get('/plans', async (_req: Request, res: Response) => {
  * POST /api/subscription/create
  * Kreira novi subscription (za prvi login ili nakon isteka)
  */
-router.post('/create', async (req: Request, res: Response) => {
+router.post('/create', validateBody(validationSchemas.subscriptionSelectPlan), async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -220,10 +221,6 @@ router.post('/create', async (req: Request, res: Response) => {
     }
 
     const { planType, isDemo = false } = req.body;
-
-    if (!planType || !['FREE', 'PRO', 'ENTERPRISE'].includes(planType)) {
-      return res.status(400).json({ error: 'Invalid plan type' });
-    }
 
     // Proveri da li je FREE plan i da li je već koristio ili imao paid plan
     if (planType === 'FREE') {
@@ -267,13 +264,9 @@ router.post('/create', async (req: Request, res: Response) => {
  * POST /api/subscription/validate-promo-code
  * Validira promo code i vraća informacije o popustu
  */
-router.post('/validate-promo-code', async (req: Request, res: Response) => {
+router.post('/validate-promo-code', validateBody(validationSchemas.promoCodeBody), async (req: Request, res: Response) => {
   try {
     const { code } = req.body;
-
-    if (!code) {
-      return res.status(400).json({ error: 'Promo code is required' });
-    }
 
     const validation = await validatePromoCode(code);
 
@@ -299,7 +292,7 @@ router.post('/validate-promo-code', async (req: Request, res: Response) => {
  * POST /api/subscription/upgrade
  * Upgrade subscription plan (sa fake payment za demo)
  */
-router.post('/upgrade', async (req: Request, res: Response) => {
+router.post('/upgrade', validateBody(validationSchemas.subscriptionUpgrade), async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -314,10 +307,6 @@ router.post('/upgrade', async (req: Request, res: Response) => {
     }
 
     const { planType, paymentData, isDemo = false, promoCode } = req.body;
-
-    if (!planType || !['FREE', 'PRO', 'ENTERPRISE'].includes(planType)) {
-      return res.status(400).json({ error: 'Invalid plan type' });
-    }
 
     // Proveri da li je FREE plan i da li je već koristio ili imao paid plan
     if (planType === 'FREE') {

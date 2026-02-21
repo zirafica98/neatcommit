@@ -84,9 +84,9 @@ export class CallbackComponent implements OnInit {
     // Proveri da li je korisnik admin
     this.authService.getCurrentUser().subscribe({
       next: (user) => {
-        // Ako je admin, preskoči plan selection i idi direktno na dashboard
+        // Admin ide na admin panel po defaultu
         if (user?.role === 'ADMIN') {
-          const returnUrl = params['returnUrl'] || '/dashboard';
+          const returnUrl = params['returnUrl'] || '/admin';
           this.router.navigate([returnUrl]);
           return;
         }
@@ -106,7 +106,7 @@ export class CallbackComponent implements OnInit {
     this.subscriptionService.getSubscription().subscribe({
       next: (subscriptionInfo) => {
         const returnUrl = params['returnUrl'] || '/dashboard';
-        
+
         // Ako nema subscription ili je istekao, otvori modal za izbor plana
         if (!subscriptionInfo.subscription || subscriptionInfo.needsPlanSelection) {
           const isExpired = subscriptionInfo.warnings?.isExpired || false;

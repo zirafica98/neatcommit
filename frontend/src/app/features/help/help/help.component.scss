@@ -10,12 +10,22 @@
   align-items: flex-start;
   gap: 24px;
   flex-wrap: wrap;
-  
+
+  @media (max-width: 768px) {
+    margin-bottom: 20px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
   > div {
     flex: 1;
-    min-width: 300px;
+    min-width: 0;
+
+    @media (min-width: 769px) {
+      min-width: 300px;
+    }
   }
-  
+
   h1 {
     margin: 0 0 8px 0;
     font-size: 36px;
@@ -23,26 +33,31 @@
     color: white !important;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.5);
     letter-spacing: -0.5px;
-    
+
     @media (max-width: 768px) {
-      font-size: 28px;
+      font-size: 24px;
     }
   }
-  
+
   .subtitle {
     color: rgba(255, 255, 255, 0.95) !important;
     margin: 0;
     font-size: 16px;
     font-weight: 500;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+
+    @media (max-width: 768px) {
+      font-size: 14px;
+    }
   }
-  
+
   .tour-button {
     display: flex;
     align-items: center;
     gap: 8px;
     white-space: nowrap;
-    
+    min-height: 44px;
+
     @media (max-width: 768px) {
       width: 100%;
       justify-content: center;
@@ -60,10 +75,14 @@
   background: var(--bg-glass) !important;
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  
+
   mat-card-header {
     padding: 24px 24px 0 24px;
-    
+
+    @media (max-width: 768px) {
+      padding: 16px 16px 0 16px;
+    }
+
     mat-card-title {
       display: flex;
       align-items: center;
@@ -71,7 +90,11 @@
       font-size: 24px;
       font-weight: 600;
       color: #333;
-      
+
+      @media (max-width: 768px) {
+        font-size: 20px;
+      }
+
       mat-icon {
         color: var(--primary-color);
         font-size: 28px;
@@ -80,9 +103,13 @@
       }
     }
   }
-  
+
   mat-card-content {
     padding: 24px;
+
+    @media (max-width: 768px) {
+      padding: 16px;
+    }
   }
 }
 

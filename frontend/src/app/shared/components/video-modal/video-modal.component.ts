@@ -57,8 +57,11 @@ export class VideoModalComponent {
         this.safeUrl = this.sanitizer.bypassSecurityTrustResourceUrl(embedUrl);
       }
     } else {
-      // Eksterni link - otvori u novom tabu
-      this.externalUrl = this.data.videoUrl;
+      // Eksterni link – dozvoljen samo https (bezbednost: ne javascript:, data:, itd.)
+      const url = (this.data.videoUrl || '').trim();
+      if (url.startsWith('https://') || url.startsWith('http://')) {
+        this.externalUrl = url;
+      }
     }
   }
 

@@ -6,6 +6,7 @@
 
 import { Router, Request, Response } from 'express';
 import { requireAdmin } from '../../middleware/admin.middleware';
+import { validateQuery, validateParams, validationSchemas } from '../../middleware/validation';
 import { getAdminStats, getUsers, getUserDetails } from '../../services/admin.service';
 import { logger } from '../../utils/logger';
 
@@ -32,10 +33,10 @@ router.get('/stats', async (_req: Request, res: Response) => {
  * GET /api/admin/users
  * Dohvata listu korisnika sa paginacijom
  */
-router.get('/users', async (req: Request, res: Response) => {
+router.get('/users', validateQuery(validationSchemas.adminPagination), async (req: Request, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 20;
 
     const result = await getUsers(page, limit);
     return res.json(result);
@@ -49,7 +50,7 @@ router.get('/users', async (req: Request, res: Response) => {
  * GET /api/admin/users/:id
  * Dohvata detalje o korisniku
  */
-router.get('/users/:id', async (req: Request, res: Response) => {
+router.get('/users/:id', validateParams(validationSchemas.idParam), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const userDetails = await getUserDetails(id);

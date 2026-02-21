@@ -13,16 +13,16 @@ import { z } from 'zod';
 const router = Router();
 
 const searchQuerySchema = z.object({
-  q: z.string().min(1, 'Search query is required'),
+  q: z.string().min(1).max(200).trim(),
   type: z.enum(['reviews', 'issues', 'repositories', 'all']).optional(),
   limit: z.preprocess((val) => {
-    if (typeof val === 'string') return parseInt(val, 10);
-    return val || 20;
-  }, z.number().default(20)),
+    const n = typeof val === 'string' ? parseInt(val, 10) : val;
+    return Math.min(Math.max(Number.isNaN(n) ? 20 : n, 1), 50);
+  }, z.number().min(1).max(50)),
   offset: z.preprocess((val) => {
-    if (typeof val === 'string') return parseInt(val, 10);
-    return val || 0;
-  }, z.number().default(0)),
+    const n = typeof val === 'string' ? parseInt(val, 10) : val;
+    return Math.min(Math.max(Number.isNaN(n) ? 0 : n, 0), 500);
+  }, z.number().min(0).max(500)),
 });
 
 /**

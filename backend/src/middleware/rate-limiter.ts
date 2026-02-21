@@ -84,7 +84,6 @@ export const authLimiter = rateLimit({
   // Fix za IPv6 problem - koristi ipKeyGenerator helper
   keyGenerator: (req) => ipKeyGenerator(req.ip || req.socket.remoteAddress || 'unknown'),
   handler: (req: Request, res: Response) => {
-    console.log('🔴 AUTH RATE LIMIT HANDLER CALLED', { ip: req.ip, path: req.path });
     logger.warn('Auth rate limit exceeded', {
       ip: req.ip,
       path: req.path,

@@ -37,11 +37,40 @@
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
 html, body {
   height: 100%;
   font-family: 'Inter', 'Roboto', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mobile: touch-friendly and safe area */
+@media (max-width: 768px) {
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .mat-mdc-button,
+  .mat-mdc-raised-button,
+  button[mat-button],
+  button[mat-raised-button],
+  a[mat-button] {
+    min-height: 44px !important;
+    touch-action: manipulation;
+  }
+
+  .mat-mdc-icon-button,
+  button[mat-icon-button] {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    touch-action: manipulation;
+  }
 }
 
 body {

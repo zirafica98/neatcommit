@@ -2,10 +2,18 @@
   padding: 2rem;
   max-width: 1400px;
   margin: 0 auto;
+
+  @media (max-width: 768px) {
+    padding: 1rem 1.25rem;
+  }
 }
 
 .admin-header {
   margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+    margin-bottom: 1.25rem;
+  }
 
   h1 {
     display: flex;
@@ -15,10 +23,20 @@
     font-weight: 600;
     color: #1a1a1a;
 
+    @media (max-width: 768px) {
+      font-size: 1.5rem;
+    }
+
     mat-icon {
       font-size: 2rem;
       width: 2rem;
       height: 2rem;
+
+      @media (max-width: 768px) {
+        font-size: 1.75rem;
+        width: 1.75rem;
+        height: 1.75rem;
+      }
     }
   }
 }
@@ -37,6 +55,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 1.5rem;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 .stat-card {
@@ -70,6 +93,10 @@
     font-weight: 700;
     color: #1a1a1a;
     margin-bottom: 1rem;
+
+    @media (max-width: 768px) {
+      font-size: 2rem;
+    }
   }
 
   .stat-details {
@@ -146,6 +173,10 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 768px) {
+    overflow-x: auto;
+  }
 
   mat-card-header {
     padding-bottom: 1rem;

@@ -396,8 +396,58 @@
     padding: 1rem;
   }
 
+  .pricing-header {
+    margin-bottom: 2rem;
+
+    h1 {
+      font-size: 1.75rem;
+    }
+
+    .subtitle {
+      font-size: 1rem;
+    }
+  }
+
   .pricing-cards {
     grid-template-columns: 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+
+  .pricing-card {
+    padding: 1.5rem;
+
+    &.featured::before,
+    &.current-plan::after {
+      top: 1rem;
+      right: 1rem;
+      font-size: 0.65rem;
+      padding: 0.4rem 0.75rem;
+    }
+  }
+
+  .plan-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+
+    h2 {
+      font-size: 1.5rem;
+    }
+
+    .plan-price .price {
+      font-size: 3rem;
+    }
+  }
+
+  .plan-usage {
+    margin-left: -1.5rem;
+    margin-right: -1.5rem;
+    margin-bottom: -1.5rem;
+    padding: 1rem 1.5rem;
+  }
+
+  .plan-actions .upgrade-button {
+    min-height: 48px;
   }
 
   .pricing-card.featured {

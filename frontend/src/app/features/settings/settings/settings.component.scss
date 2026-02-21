@@ -5,7 +5,11 @@
 
 .settings-header {
   margin-bottom: 32px;
-  
+
+  @media (max-width: 768px) {
+    margin-bottom: 20px;
+  }
+
   h1 {
     margin: 0 0 8px 0;
     font-size: 36px;
@@ -13,18 +17,22 @@
     color: white !important;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 0 20px rgba(102, 126, 234, 0.5);
     letter-spacing: -0.5px;
-    
+
     @media (max-width: 768px) {
-      font-size: 28px;
+      font-size: 24px;
     }
   }
-  
+
   .subtitle {
     color: rgba(255, 255, 255, 0.95) !important;
     margin: 0;
     font-size: 16px;
     font-weight: 500;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+
+    @media (max-width: 768px) {
+      font-size: 14px;
+    }
   }
 }
 
@@ -39,14 +47,18 @@
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.3);
   transition: all 0.3s ease;
-  
+
   &:hover {
     box-shadow: var(--shadow-lg) !important;
     transform: translateY(-2px);
   }
-  
+
   mat-card-header {
     padding: 24px 24px 0 24px;
+
+    @media (max-width: 768px) {
+      padding: 16px 16px 0 16px;
+    }
     
     mat-card-title {
       display: flex;
@@ -94,6 +106,10 @@
   
   mat-card-content {
     padding: 24px;
+
+    @media (max-width: 768px) {
+      padding: 16px;
+    }
   }
 }
 
@@ -268,7 +284,16 @@
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
-    
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+
+      button {
+        width: 100%;
+        min-height: 44px;
+      }
+    }
+
     button {
       flex: 1;
       min-width: 140px;
@@ -491,6 +516,18 @@
     justify-content: space-between;
     align-items: center;
     padding: 20px;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      padding: 16px;
+
+      button {
+        min-height: 44px;
+        width: 100%;
+      }
+    }
     background: linear-gradient(135deg, rgba(255, 107, 107, 0.05) 0%, rgba(238, 90, 111, 0.05) 100%);
     border-radius: 12px;
     border: 1px solid rgba(255, 107, 107, 0.2);

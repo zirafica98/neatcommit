@@ -10,7 +10,7 @@ import { logger } from '../../utils/logger';
 import prisma from '../../config/database';
 import { verifyAccessToken } from '../../services/auth.service';
 import * as fs from 'fs';
-import { validateBody, validationSchemas } from '../../middleware/validation';
+import { validateBody, validateParams, validationSchemas } from '../../middleware/validation';
 import { documentationLimiter, documentationDownloadLimiter } from '../../middleware/rate-limiter';
 
 const router = Router();
@@ -229,7 +229,7 @@ router.post('/generate', documentationLimiter, validateBody(validationSchemas.ge
  * 
  * Dobija status dokumentacije
  */
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', validateParams(validationSchemas.idParam), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -282,7 +282,7 @@ router.get('/:id', async (req: Request, res: Response) => {
  * 
  * Rate limiting: 100 zahteva po 15 minuta
  */
-router.get('/:id/download', documentationDownloadLimiter, async (req: Request, res: Response) => {
+router.get('/:id/download', documentationDownloadLimiter, validateParams(validationSchemas.idParam), async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -327,7 +327,7 @@ router.get('/:id/download', documentationDownloadLimiter, async (req: Request, r
  * 
  * Dobija listu dokumentacija za repozitorijum
  */
-router.get('/repository/:repositoryId', async (req: Request, res: Response) => {
+router.get('/repository/:repositoryId', validateParams(validationSchemas.repositoryIdParam), async (req: Request, res: Response) => {
   try {
     const { repositoryId } = req.params;
 

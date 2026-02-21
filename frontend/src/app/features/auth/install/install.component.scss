@@ -5,29 +5,48 @@
   min-height: 100vh;
   padding: 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+  @media (max-width: 768px) {
+    padding: 16px;
+    min-height: 100dvh;
+  }
 }
 
 .install-card {
   max-width: 600px;
   width: 100%;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+
+  @media (max-width: 768px) {
+    mat-card-content {
+      padding: 16px !important;
+    }
+  }
 }
 
 .instructions {
   margin: 20px 0;
-  
+
+  @media (max-width: 768px) {
+    margin: 16px 0;
+  }
+
   ol {
     padding-left: 20px;
-    
+
     li {
       margin-bottom: 20px;
-      
+
+      @media (max-width: 768px) {
+        margin-bottom: 16px;
+      }
+
       strong {
         display: block;
         margin-bottom: 5px;
         color: #333;
       }
-      
+
       p {
         margin: 5px 0 0 0;
         color: #666;
@@ -55,11 +74,23 @@
   gap: 15px;
   margin-top: 30px;
   flex-wrap: wrap;
-  
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    margin-top: 24px;
+    gap: 12px;
+
+    button {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+  }
+
   button {
     flex: 1;
     min-width: 200px;
-    
+
     mat-icon {
       margin-right: 8px;
     }

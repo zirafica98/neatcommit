@@ -400,6 +400,50 @@ Ako ipak želiš da koristiš Heroku umesto Render Static Site:
 
 ---
 
+## 👤 Kreiranje admin korisnika na serveru
+
+Backend na Renderu nema SSH pristup. Admina kreiraš **lokalno**, koristeći **production bazu** (istu koju koristi server).
+
+### Način 1: Lokalno sa production `DATABASE_URL` (preporučeno)
+
+1. Na svom računaru otvori `backend` i pripremi privremeni `.env` sa **production** vrednostima (kopiraj `DATABASE_URL` iz Render Dashboard → Backend Service → Environment).
+2. Pokreni skriptu (ne moraš da commituješ `.env` – koristi ga samo za ovaj jedan pokretaj):
+
+**Novi admin (login username + password, preko "Admin Login" na sajtu):**
+```bash
+cd backend
+# Postavi DATABASE_URL na production (Render PostgreSQL URL iz Dashboard → Environment)
+export DATABASE_URL="postgresql://user:pass@host:port/database"
+npm run create-admin
+# ili sa svojim podacima:
+npm run create-admin myadmin admin@domen.com JakaLozinka123
+```
+
+**Postojećem korisniku dati admin (npr. GitHub username):**
+```bash
+cd backend
+export DATABASE_URL="postgresql://user:pass@host:port/database"
+npm run set-admin GITHUB_USERNAME
+```
+
+3. Posle toga korisnik treba da se izloguje i ponovo uloguje da bi video Admin link.
+
+### Način 2: Render Shell (ako imaš pristup skriptama u deploy-u)
+
+Ako tvoj Render build uključuje folder `scripts/` (npr. deploy-uješ ceo repo, ne samo `dist/`):
+
+1. Render Dashboard → tvoj Backend Service → **Shell** (otvori konzolu).
+2. U Shell-u:
+```bash
+node scripts/create-admin.js admin admin@example.com TvojaLozinka123
+# ili za postojećeg korisnika:
+node scripts/set-admin.js GITHUB_USERNAME
+```
+
+**Napomena:** Ako build koristi samo `npm run build` i ne kopira `scripts/`, Shell nema te fajlove – tada koristi Način 1.
+
+---
+
 ## 🔧 Post-Deployment Checklist
 
 ### Backend:

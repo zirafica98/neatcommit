@@ -87,9 +87,8 @@ export class LoginComponent implements OnInit {
       next: (response) => {
         this.loading = false;
         // Auth service će automatski sačuvati token i user
-        // Ako je admin, idi direktno na dashboard (bez plan selection)
         if (response.user?.role === 'ADMIN') {
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/admin']);
         } else {
           this.router.navigate(['/dashboard']);
         }
