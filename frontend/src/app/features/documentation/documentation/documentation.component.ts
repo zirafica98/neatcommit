@@ -239,9 +239,14 @@ export class DocumentationComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error downloading documentation:', error);
-        this.snackBar.open('Failed to download documentation', 'Close', {
-          duration: 5000,
-        });
+        const isExpired = error.status === 410;
+        this.snackBar.open(
+          isExpired
+            ? 'Download expired or already used. Please generate the documentation again.'
+            : 'Failed to download documentation',
+          'Close',
+          { duration: 5000 }
+        );
       },
     });
   }

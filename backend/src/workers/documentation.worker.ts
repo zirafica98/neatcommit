@@ -14,6 +14,7 @@ import {
   generateDocumentation,
   createDocumentationFile,
 } from '../services/documentation.service';
+import { setDocBuffer } from '../services/doc-cache.service';
 
 export interface GenerateDocumentationJob {
   documentationId: string;
@@ -74,19 +75,22 @@ export const documentationWorker = new Worker(
       logger.info('Generating documentation with LLM...');
       const documentation = await generateDocumentation(structure, files);
 
-      // 6. Kreiraj .doc fajl
-      logger.info('Creating documentation file...');
+      // 6. Kreiraj .docx u memoriji (ne upisujemo na disk)
+      logger.info('Creating documentation buffer...');
       const repoData = await prisma.repository.findUnique({
         where: { id: repositoryId },
       });
 
       const projectName = repoData?.fullName || `${owner}/${repo}`;
-      const { filePath, fileName, fileSize } = await createDocumentationFile(
+      const { buffer, fileName, fileSize } = await createDocumentationFile(
         documentation,
         projectName
       );
 
-      // 7. Ažuriraj dokumentaciju sa fajl informacijama
+      // 7. Sačuvaj buffer u Redis za jednokratno preuzimanje (TTL 15 min)
+      await setDocBuffer(documentationId, buffer);
+
+      // 8. Ažuriraj dokumentaciju u bazi (bez filePath – fajl nije na disku)
       const baseUrl = process.env.API_URL || 'http://localhost:3000';
       const fileUrl = `${baseUrl}/api/documentation/${documentationId}/download`;
 
@@ -95,7 +99,7 @@ export const documentationWorker = new Worker(
         data: {
           status: 'completed',
           fileName,
-          filePath,
+          filePath: null,
           fileUrl,
           fileSize,
           completedAt: new Date(),

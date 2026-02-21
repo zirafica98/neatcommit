@@ -9,7 +9,7 @@ import { Queue } from 'bullmq';
 import { logger } from '../../utils/logger';
 import prisma from '../../config/database';
 import { verifyAccessToken } from '../../services/auth.service';
-import * as fs from 'fs';
+import { getAndDeleteDocBuffer } from '../../services/doc-cache.service';
 import { validateBody, validateParams, validationSchemas } from '../../middleware/validation';
 import { documentationLimiter, documentationDownloadLimiter } from '../../middleware/rate-limiter';
 
@@ -128,21 +128,12 @@ router.post('/generate', documentationLimiter, validateBody(validationSchemas.ge
       }
     }
 
-    // Obriši sve stare dokumentacije za ovaj repozitorijum pre kreiranja nove
-    logger.info('🗑️ Deleting old documentations for repository', { repositoryId });
-    const oldDocumentations = await prisma.documentation.findMany({
+    // Obriši stare zapise dokumentacije za ovaj repozitorijum (fajlovi se ne čuvaju na disku)
+    logger.info('🗑️ Deleting old documentation records for repository', { repositoryId });
+    const deleted = await prisma.documentation.deleteMany({
       where: { repositoryId },
     });
-
-    for (const oldDoc of oldDocumentations) {
-      if (oldDoc.filePath && fs.existsSync(oldDoc.filePath)) {
-        fs.unlinkSync(oldDoc.filePath);
-        logger.debug('Deleted old documentation file from disk', { filePath: oldDoc.filePath });
-      }
-      await prisma.documentation.delete({ where: { id: oldDoc.id } });
-      logger.debug('Deleted old documentation record from DB', { documentationId: oldDoc.id });
-    }
-    logger.info(`✅ Deleted ${oldDocumentations.length} old documentations`);
+    logger.info(`✅ Deleted ${deleted.count} old documentation records`);
 
     // Kreiraj dokumentaciju u bazi
     logger.info('💾 Creating documentation record');
@@ -277,10 +268,8 @@ router.get('/:id', validateParams(validationSchemas.idParam), async (req: Reques
 
 /**
  * GET /api/documentation/:id/download
- * 
- * Preuzima .doc fajl sa dokumentacijom
- * 
- * Rate limiting: 100 zahteva po 15 minuta
+ *
+ * Preuzima .docx iz cache-a (jednokratno). Ako nije preuzeto na vreme ili je već preuzeto, 410 – mora ponovo da generiše.
  */
 router.get('/:id/download', documentationDownloadLimiter, validateParams(validationSchemas.idParam), async (req: Request, res: Response) => {
   try {
@@ -301,18 +290,18 @@ router.get('/:id/download', documentationDownloadLimiter, validateParams(validat
       });
     }
 
-    if (!documentation.filePath || !fs.existsSync(documentation.filePath)) {
-      return res.status(404).json({ error: 'Documentation file not found' });
+    const buffer = await getAndDeleteDocBuffer(id);
+    if (!buffer) {
+      return res.status(410).json({
+        error: 'Documentation no longer available',
+        message: 'Download has expired or was already used. Please generate the documentation again.',
+      });
     }
 
-    // Pošalji fajl
     const fileName = documentation.fileName || 'documentation.docx';
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-
-    const fileStream = fs.createReadStream(documentation.filePath);
-    fileStream.pipe(res);
-    return; // File stream will handle the response
+    return res.send(buffer);
   } catch (error) {
     logger.error('Failed to download documentation:', error);
     return res.status(500).json({

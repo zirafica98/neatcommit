@@ -16,7 +16,6 @@ import { logger } from '../utils/logger';
 import { detectLanguage } from '../utils/language-detector';
 // import { parseCode } from '../utils/ast-parser'; // Not used
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
-import * as fs from 'fs';
 import * as path from 'path';
 
 export interface RepositoryFile {
@@ -421,19 +420,14 @@ Generate documentation now.`;
 }
 
 /**
- * Kreira .doc fajl sa dokumentacijom
+ * Kreira .docx u memoriji (buffer). Ne upisuje na disk – fajl se čuva samo u Redis-u za jednokratno preuzimanje.
  */
 export async function createDocumentationFile(
   documentation: string,
   projectName: string,
-  outputDir: string = './uploads/documentation'
-): Promise<{ filePath: string; fileName: string; fileSize: number }> {
+  _outputDir?: string
+): Promise<{ buffer: Buffer; fileName: string; fileSize: number }> {
   try {
-    // Kreiraj output direktorijum ako ne postoji
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
     // Parse markdown u docx strukturu
     const paragraphs: Paragraph[] = [];
 
@@ -555,24 +549,17 @@ export async function createDocumentationFile(
       ],
     });
 
-    // Generiši ime fajla
     const fileName = `${projectName.replace(/[^a-z0-9]/gi, '_')}_documentation_${Date.now()}.docx`;
-    const filePath = path.join(outputDir, fileName);
-
-    // Sačuvaj fajl
     const buffer = await Packer.toBuffer(doc);
-    fs.writeFileSync(filePath, buffer);
-
     const fileSize = buffer.length;
 
-    logger.info('Documentation file created', {
+    logger.info('Documentation buffer created (in-memory)', {
       fileName,
-      filePath,
       fileSize,
     });
 
     return {
-      filePath,
+      buffer,
       fileName,
       fileSize,
     };
