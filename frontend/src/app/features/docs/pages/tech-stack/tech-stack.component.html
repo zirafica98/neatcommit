@@ -1,0 +1,56 @@
+<div class="doc-page">
+  <h1>Tech stack</h1>
+  <p>
+    NeatCommit is built with a Node.js backend and an Angular frontend. This section summarizes the main technologies used.
+  </p>
+
+  <h2>Backend</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Technology</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Runtime</td><td>Node.js 18+</td></tr>
+      <tr><td>Language</td><td>TypeScript</td></tr>
+      <tr><td>Framework</td><td>Express.js</td></tr>
+      <tr><td>Database</td><td>PostgreSQL 14+</td></tr>
+      <tr><td>ORM</td><td>Prisma</td></tr>
+      <tr><td>Cache / Queue</td><td>Redis 7+, BullMQ</td></tr>
+      <tr><td>Auth</td><td>JWT (access + refresh tokens)</td></tr>
+      <tr><td>Integrations</td><td>GitHub App (webhooks, REST API), OpenAI API</td></tr>
+      <tr><td>Parsing</td><td>Babel (JS/TS AST), regex for other languages</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Frontend</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Technology</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Framework</td><td>Angular 17+ (standalone components)</td></tr>
+      <tr><td>UI</td><td>Angular Material</td></tr>
+      <tr><td>State / data</td><td>RxJS, Angular services</td></tr>
+      <tr><td>Routing</td><td>Angular Router (lazy-loaded features)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Backend structure (high level)</h2>
+  <p>
+    The backend is organized into <code>api/routes</code> (REST endpoints), <code>services</code> (business logic: auth, GitHub, analysis, LLM, security, subscription, documentation, export, search, admin),
+    <code>workers</code> (BullMQ jobs for analysis and documentation), <code>config</code> (env, database, Redis, queue, Sentry), <code>middleware</code> (auth, validation, rate limiting, subscription checks),
+    and <code>utils</code> (logger, AST parser, language detection, webhook verification).
+  </p>
+
+  <h2>Frontend structure (high level)</h2>
+  <p>
+    The Angular app uses <code>core</code> (guards, interceptors, layout), <code>layout</code> (main layout with nav), and <code>features</code> (landing, auth, dashboard, repositories, reviews, settings,
+    documentation, search, help, pricing, admin, news). Routes are lazy-loaded per feature. The docs you are reading are a separate public section under <code>/docs</code>.
+  </p>
+</div>

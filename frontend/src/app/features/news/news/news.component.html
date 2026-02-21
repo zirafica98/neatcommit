@@ -1,0 +1,25 @@
+<div class="news-page">
+  <header class="news-header">
+    <a routerLink="/" class="back-link">
+      <mat-icon>arrow_back</mat-icon>
+      Back to home
+    </a>
+    <h1>News</h1>
+    <p class="subtitle">Updates and what we're working on next</p>
+  </header>
+
+  <div class="news-list">
+    <article *ngFor="let item of newsItems" class="news-card">
+      <time [attr.datetime]="item.date" class="news-date">{{ item.date }}</time>
+      <h2 class="news-title">{{ item.title }}</h2>
+      <p class="news-body">{{ item.body }}</p>
+    </article>
+  </div>
+
+  <div class="news-footer">
+    <a routerLink="/" mat-flat-button color="primary">
+      <mat-icon>home</mat-icon>
+      Back to home
+    </a>
+  </div>
+</div>

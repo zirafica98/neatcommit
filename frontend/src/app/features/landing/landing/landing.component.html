@@ -8,8 +8,10 @@
     <nav class="nav">
       <a href="#features">Features</a>
       <a href="#how-it-works">How it works</a>
-      <a routerLink="/app" class="nav-app">Open app</a>
-      <a routerLink="/auth/login" class="btn-login">Log in</a>
+      <a href="#pricing">Pricing</a>
+      <a routerLink="/docs">Documentation</a>
+      <a routerLink="/news">News</a>
+      <a href="#faq">FAQ</a>
       <a routerLink="/auth/login" class="btn-start" mat-flat-button color="primary">
         Get started
       </a>
@@ -68,6 +70,65 @@
     </div>
   </section>
 
+  <!-- Pricing -->
+  <section id="pricing" class="pricing">
+    <h2 class="section-title">Simple pricing</h2>
+    <p class="section-subtitle">Start free, upgrade when you need more.</p>
+    <div class="pricing-grid">
+      <article class="pricing-card">
+        <div class="plan-badge free">
+          <mat-icon>free_breakfast</mat-icon>
+        </div>
+        <h3>FREE</h3>
+        <div class="plan-price">
+          <span class="price">$0</span>
+          <span class="interval">/month</span>
+        </div>
+        <ul class="plan-features">
+          <li><mat-icon>check_circle</mat-icon> Limited reviews per month</li>
+          <li><mat-icon>check_circle</mat-icon> 1 repository</li>
+          <li><mat-icon>check_circle</mat-icon> Security analysis</li>
+          <li><mat-icon>check_circle</mat-icon> Dashboard & reports</li>
+        </ul>
+        <a routerLink="/auth/login" mat-stroked-button class="pricing-cta">Get started</a>
+      </article>
+      <article class="pricing-card featured">
+        <span class="badge-popular">Popular</span>
+        <div class="plan-badge pro">
+          <mat-icon>workspace_premium</mat-icon>
+        </div>
+        <h3>PRO</h3>
+        <div class="plan-price">
+          <span class="price">$19</span>
+          <span class="interval">/month</span>
+        </div>
+        <ul class="plan-features">
+          <li><mat-icon>check_circle</mat-icon> More reviews per month</li>
+          <li><mat-icon>check_circle</mat-icon> Multiple repositories</li>
+          <li><mat-icon>check_circle</mat-icon> AI documentation</li>
+          <li><mat-icon>check_circle</mat-icon> Priority support</li>
+        </ul>
+        <a routerLink="/auth/login" mat-raised-button color="primary" class="pricing-cta">Get started</a>
+      </article>
+      <article class="pricing-card">
+        <div class="plan-badge enterprise">
+          <mat-icon>business</mat-icon>
+        </div>
+        <h3>ENTERPRISE</h3>
+        <div class="plan-price">
+          <span class="price">Custom</span>
+        </div>
+        <ul class="plan-features">
+          <li><mat-icon>check_circle</mat-icon> Unlimited reviews</li>
+          <li><mat-icon>check_circle</mat-icon> Unlimited repositories</li>
+          <li><mat-icon>check_circle</mat-icon> All PRO features</li>
+          <li><mat-icon>check_circle</mat-icon> Dedicated support</li>
+        </ul>
+        <a routerLink="/auth/login" mat-stroked-button class="pricing-cta">Contact us</a>
+      </article>
+    </div>
+  </section>
+
   <!-- How it works -->
   <section id="how-it-works" class="how">
     <h2 class="section-title">How it works</h2>
@@ -96,6 +157,39 @@
     </div>
   </section>
 
+  <!-- Documentation -->
+  <section id="documentation" class="documentation">
+    <h2 class="section-title">Documentation</h2>
+    <p class="section-subtitle">Learn what the app can do, how it works, and how it’s built.</p>
+    <div class="doc-content">
+      <p class="doc-text">
+        Full documentation for developers: overview, how it works, tech stack, API reference, and frontend components.
+      </p>
+      <div class="doc-actions">
+        <a routerLink="/docs" mat-raised-button color="primary" class="doc-btn">
+          <mat-icon>menu_book</mat-icon>
+          Open documentation
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="faq">
+    <h2 class="section-title">Frequently asked questions</h2>
+    <div class="faq-list">
+      <div *ngFor="let item of faqItems" class="faq-item">
+        <button type="button" class="faq-question" (click)="toggleFaq(item)" [attr.aria-expanded]="item.open">
+          <span>{{ item.question }}</span>
+          <mat-icon>{{ item.open ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+        <div class="faq-answer" [class.open]="item.open">
+          <p>{{ item.answer }}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Footer CTA -->
   <section class="footer-cta">
     <h2>Ready to improve your code quality?</h2>
@@ -112,6 +206,10 @@
         <mat-icon>security</mat-icon>
         <span>NeatCommit</span>
       </a>
+      <nav class="footer-links">
+        <a routerLink="/docs">Documentation</a>
+        <a routerLink="/news">News</a>
+      </nav>
       <p class="copyright">&copy; {{ currentYear }} NeatCommit. All rights reserved.</p>
     </div>
   </footer>

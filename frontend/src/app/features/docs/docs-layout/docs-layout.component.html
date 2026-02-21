@@ -1,0 +1,36 @@
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <a routerLink="/" class="docs-back">
+      <mat-icon>arrow_back</mat-icon>
+      Back to site
+    </a>
+    <nav class="docs-nav">
+      <h3 class="docs-nav-title">Documentation</h3>
+      <a
+        *ngFor="let item of navItems"
+        [routerLink]="item.path"
+        [fragment]="item.fragment || null"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: true }"
+        class="docs-nav-link"
+      >
+        <mat-icon>{{ item.icon }}</mat-icon>
+        <span>{{ item.label }}</span>
+      </a>
+      <ng-container *ngIf="isOnApiPage">
+        <h3 class="docs-nav-title docs-nav-subtitle">Sections</h3>
+        <a
+          *ngFor="let section of apiSections"
+          [routerLink]="['/docs/api']"
+          [fragment]="section.fragment"
+          class="docs-nav-link docs-nav-sublink"
+        >
+          <span>{{ section.label }}</span>
+        </a>
+      </ng-container>
+    </nav>
+  </aside>
+  <main class="docs-main">
+    <router-outlet></router-outlet>
+  </main>
+</div>

@@ -1,0 +1,173 @@
+<div class="doc-page">
+  <h1>API Reference</h1>
+  <p>
+    All API endpoints are prefixed with the base URL of the backend (e.g. <code>/api</code> for REST, <code>/webhook</code> for GitHub webhooks).
+    Where “Auth” is required, send <code>Authorization: Bearer &lt;accessToken&gt;</code>. Admin endpoints require an authenticated user with <code>role: ADMIN</code>.
+  </p>
+
+  <nav class="doc-toc" aria-label="On this page">
+    <strong>On this page</strong>
+    <a href="#health">Health</a>
+    <a href="#auth">Auth</a>
+    <a href="#documentation">Documentation</a>
+    <a href="#export">Export</a>
+    <a href="#search">Search</a>
+    <a href="#subscription">Subscription</a>
+    <a href="#admin">Admin</a>
+    <a href="#webhook">Webhook</a>
+  </nav>
+
+  <h2 id="health">Health</h2>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/health</span>
+    <p class="api-desc">Health check. Returns status and optionally DB/Redis info (in non-production). No auth.</p>
+  </div>
+
+  <h2 id="auth">Auth</h2>
+  <p>Base path: <code>/api/auth</code></p>
+
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/auth/github</span>
+    <p class="api-desc">Redirects to GitHub OAuth. Used to start login flow. No auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/auth/github/check</span>
+    <p class="api-desc">Query: <code>username</code>. Checks if user has an installation; returns user + JWT tokens if found. No Bearer auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/auth/github/complete</span>
+    <p class="api-desc">Query: <code>installation_id</code>. Completes installation flow; returns user + JWT tokens. No Bearer auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/auth/github/callback</span>
+    <p class="api-desc">OAuth callback from GitHub. Exchanges code for user info and redirects. No Bearer auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/auth/github/callback</span>
+    <p class="api-desc">Alternative OAuth callback (e.g. server-side). Body: code, state. Returns tokens or redirects. No Bearer auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/auth/refresh</span>
+    <p class="api-desc">Body: <code>{{ '{' }} "refreshToken": "..." {{ '}' }}</code>. Returns new access and refresh tokens. No Bearer auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/auth/me</span>
+    <p class="api-desc">Returns current user profile. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/auth/register</span>
+    <p class="api-desc">Body: email, password, username, etc. Registers a new user. No Bearer auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/auth/login</span>
+    <p class="api-desc">Body: email, password. Returns user + tokens. No Bearer auth.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/auth/disconnect</span>
+    <p class="api-desc">Disconnects GitHub from the current user. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/auth/logout</span>
+    <p class="api-desc">Logs out (e.g. invalidates refresh token). Auth optional.</p>
+  </div>
+
+  <h2 id="documentation">Documentation (AI-generated docs)</h2>
+  <p>Base path: <code>/api/documentation</code>. Auth required unless noted.</p>
+
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/documentation/generate</span>
+    <p class="api-desc">Body: repositoryId, options. Starts async generation of documentation. Auth required; subscription may apply.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/documentation/:id</span>
+    <p class="api-desc">Returns a single documentation record by ID. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/documentation/:id/download</span>
+    <p class="api-desc">Downloads the generated documentation (e.g. file). Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/documentation/repository/:repositoryId</span>
+    <p class="api-desc">Lists documentation for a repository. Auth required.</p>
+  </div>
+
+  <h2 id="export">Export</h2>
+  <p>Base path: <code>/api/export</code>. Auth required.</p>
+
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/export/review/:id/pdf</span>
+    <p class="api-desc">Exports a review as PDF. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/export/issues/csv</span>
+    <p class="api-desc">Query params for filtering. Exports issues as CSV. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/export/stats/excel</span>
+    <p class="api-desc">Exports stats (e.g. security metrics) as Excel. Auth required.</p>
+  </div>
+
+  <h2 id="search">Search</h2>
+  <p>Base path: <code>/api/search</code>. Auth optional (if provided, results are scoped to user).</p>
+
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/search</span>
+    <p class="api-desc">Query: <code>q</code> (required), <code>type</code> (reviews | issues | repositories | all), <code>limit</code>, <code>offset</code>. Search across reviews, issues, repositories. Auth optional.</p>
+  </div>
+
+  <h2 id="subscription">Subscription</h2>
+  <p>Base path: <code>/api/subscription</code>. Auth required.</p>
+
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/subscription</span>
+    <p class="api-desc">Returns current subscription, limits, and warnings. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/subscription/check-login</span>
+    <p class="api-desc">Checks if user is allowed to log in (e.g. subscription status). Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/subscription/check-free-plan</span>
+    <p class="api-desc">Returns whether user has used free plan or had a paid plan; used for plan selection. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/subscription/plans</span>
+    <p class="api-desc">Returns available plans (FREE, PRO, etc.). No auth required (public listing).</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/subscription/create</span>
+    <p class="api-desc">Body: plan selection. Creates or updates subscription. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/subscription/validate-promo-code</span>
+    <p class="api-desc">Body: promo code. Validates and returns discount/plan info. Auth required.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/api/subscription/upgrade</span>
+    <p class="api-desc">Body: plan. Upgrades subscription. Auth required.</p>
+  </div>
+
+  <h2 id="admin">Admin</h2>
+  <p>Base path: <code>/api/admin</code>. Admin role required.</p>
+
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/admin/stats</span>
+    <p class="api-desc">Returns global stats (users, reviews, etc.). Admin only.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/admin/users</span>
+    <p class="api-desc">Query: pagination. Lists users. Admin only.</p>
+  </div>
+  <div class="api-endpoint">
+    <span class="api-method">GET</span><span class="api-path">/api/admin/users/:id</span>
+    <p class="api-desc">Returns a single user by ID. Admin only.</p>
+  </div>
+
+  <h2 id="webhook">Webhook</h2>
+  <p>Base path: <code>/webhook</code>. Signature verification via <code>X-Hub-Signature-256</code>. No Bearer auth.</p>
+
+  <div class="api-endpoint">
+    <span class="api-method">POST</span><span class="api-path">/webhook/github</span>
+    <p class="api-desc">GitHub App webhook. Receives <code>pull_request</code>, <code>push</code>, etc. Validates signature and enqueues analysis jobs. No Bearer auth.</p>
+  </div>
+</div>

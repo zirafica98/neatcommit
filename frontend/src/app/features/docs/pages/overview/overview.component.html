@@ -1,0 +1,31 @@
+<div class="doc-page">
+  <h1>Overview</h1>
+  <p>
+    <strong>NeatCommit</strong> is an AI-powered code review and security auditing platform for GitHub repositories.
+    It helps development teams catch security issues and improve code quality directly in the pull request workflow.
+  </p>
+
+  <h2>What the application does</h2>
+  <ul>
+    <li><strong>Automated security analysis</strong> – Every pull request is analyzed for vulnerabilities (OWASP Top 10, CWE), insecure patterns, and best-practice violations.</li>
+    <li><strong>AI-assisted review</strong> – For complex or high-risk files, an LLM (GPT-3.5/GPT-4) provides contextual comments and suggested fixes.</li>
+    <li><strong>Security scoring</strong> – Repositories and PRs get a security score and trend so you can track improvement over time.</li>
+    <li><strong>Inline PR comments</strong> – Findings are posted as comments on the PR so developers see them where they code.</li>
+    <li><strong>Multi-language support</strong> – JavaScript, TypeScript, Java, Python, PHP, C#, SQL, Go, and Ruby are supported.</li>
+    <li><strong>Documentation generation</strong> – Optional AI-generated documentation (e.g. README sections) from the codebase.</li>
+    <li><strong>Subscription plans</strong> – Free and paid plans with limits on reviews and repositories; promo codes for trials.</li>
+  </ul>
+
+  <h2>Who it is for</h2>
+  <p>
+    NeatCommit is aimed at development teams and individual developers who want to ship safer code without slowing down.
+    It fits into existing GitHub workflows: install the GitHub App, open a PR, and get results in the dashboard and on the PR.
+  </p>
+
+  <h2>High-level flow</h2>
+  <p>
+    Users sign in (GitHub OAuth), install the NeatCommit GitHub App on their org or account, and select repositories.
+    When a pull request is opened (or updated), the backend receives a webhook, queues an analysis job, runs security checks and optional LLM analysis,
+    then posts comments and stores results. Users view reviews, scores, and exports in the web app.
+  </p>
+</div>

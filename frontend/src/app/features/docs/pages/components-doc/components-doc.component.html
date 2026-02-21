@@ -1,0 +1,97 @@
+<div class="doc-page">
+  <h1>Components</h1>
+  <p>
+    The frontend is built with Angular standalone components. Below is a short description of each main feature component and where it is used.
+  </p>
+
+  <nav class="doc-toc" aria-label="On this page">
+    <strong>On this page</strong>
+    <a href="#public">Public (no login)</a>
+    <a href="#app">App (authenticated)</a>
+  </nav>
+
+  <h2 id="public">Public (no login)</h2>
+
+  <h3>LandingComponent</h3>
+  <p><strong>Path:</strong> <code>features/landing/landing</code>. <strong>Route:</strong> <code>/</code>.</p>
+  <p>Landing page: hero, features, pricing, how it works, documentation CTA, FAQ, footer. Entry point for new visitors.</p>
+
+  <h3>NewsComponent</h3>
+  <p><strong>Path:</strong> <code>features/news/news</code>. <strong>Route:</strong> <code>/news</code>.</p>
+  <p>Displays a list of news/updates (date, title, body). Used for product news and roadmap.</p>
+
+  <h3>DocsLayoutComponent</h3>
+  <p><strong>Path:</strong> <code>features/docs/docs-layout</code>. <strong>Route:</strong> <code>/docs</code> (layout).</p>
+  <p>Layout for the documentation section: sidebar navigation and router outlet for doc pages (overview, how-it-works, tech-stack, api, components).</p>
+
+  <h3>Docs pages (Overview, How it works, Tech stack, API Reference, Components)</h3>
+  <p><strong>Path:</strong> <code>features/docs/pages/*</code>. <strong>Routes:</strong> <code>/docs/overview</code>, <code>/docs/how-it-works</code>, <code>/docs/tech-stack</code>, <code>/docs/api</code>, <code>/docs/components</code>.</p>
+  <p>Static content components that render the documentation content inside the docs layout.</p>
+
+  <h3>LoginComponent</h3>
+  <p><strong>Path:</strong> <code>features/auth/login</code>. <strong>Route:</strong> <code>/auth/login</code>.</p>
+  <p>Login page: GitHub OAuth button, optional email/password login. Redirects after successful auth.</p>
+
+  <h3>CallbackComponent</h3>
+  <p><strong>Path:</strong> <code>features/auth/callback</code>. <strong>Route:</strong> <code>/auth/callback</code>.</p>
+  <p>Handles OAuth callback: exchanges code for tokens, stores them, redirects to app or installation flow.</p>
+
+  <h3>InstallComponent</h3>
+  <p><strong>Path:</strong> <code>features/auth/install</code>. <strong>Route:</strong> <code>/auth/install</code>.</p>
+  <p>Prompts user to install the GitHub App; links to GitHub App installation URL.</p>
+
+  <h3>InstallationWaitComponent</h3>
+  <p><strong>Path:</strong> <code>features/auth/installation-wait</code>. <strong>Route:</strong> <code>/auth/installation-wait</code>.</p>
+  <p>Shown after redirect from GitHub App install; waits for webhook and then continues (e.g. redirect to app).</p>
+
+  <h2 id="app">App (authenticated)</h2>
+  <p>All of the following live under the main layout (<code>MainLayoutComponent</code>) and require authentication.</p>
+
+  <h3>MainLayoutComponent</h3>
+  <p><strong>Path:</strong> <code>layout/main-layout</code>. <strong>Route:</strong> <code>/app</code> (wrapper).</p>
+  <p>Main app shell: sidebar/nav, outlet for dashboard, repositories, reviews, settings, documentation, search, help, pricing, admin.</p>
+
+  <h3>HomeRedirectComponent</h3>
+  <p><strong>Path:</strong> <code>layout/home-redirect</code>. <strong>Route:</strong> <code>/app</code> (default child).</p>
+  <p>Redirects <code>/app</code> to a default route (e.g. dashboard).</p>
+
+  <h3>DashboardComponent</h3>
+  <p><strong>Path:</strong> <code>features/dashboard/dashboard</code>. <strong>Route:</strong> <code>/app/dashboard</code>.</p>
+  <p>Dashboard: overview of repositories, recent reviews, security scores, quick actions.</p>
+
+  <h3>RepositoriesComponent</h3>
+  <p><strong>Path:</strong> <code>features/repositories/repositories</code>. <strong>Route:</strong> <code>/app/repositories</code>.</p>
+  <p>Lists repositories connected via the GitHub App; manage which repos are analyzed.</p>
+
+  <h3>ReviewsComponent</h3>
+  <p><strong>Path:</strong> <code>features/reviews/reviews</code>. <strong>Route:</strong> <code>/app/reviews</code>.</p>
+  <p>List of code reviews (PR analyses) with filters and links to detail.</p>
+
+  <h3>ReviewDetailComponent</h3>
+  <p><strong>Path:</strong> <code>features/reviews/review-detail</code>. <strong>Route:</strong> <code>/app/reviews/:id</code> (or similar).</p>
+  <p>Shows a single review: findings, score, files, suggested fixes. Export options (e.g. PDF).</p>
+
+  <h3>SettingsComponent</h3>
+  <p><strong>Path:</strong> <code>features/settings/settings</code>. <strong>Route:</strong> <code>/app/settings</code>.</p>
+  <p>User settings: profile, connected GitHub account, notifications, subscription link.</p>
+
+  <h3>DocumentationComponent (in-app)</h3>
+  <p><strong>Path:</strong> <code>features/documentation/documentation</code>. <strong>Route:</strong> <code>/app/documentation</code>.</p>
+  <p>In-app feature for generating and downloading AI-generated documentation for a repository (different from the public /docs site).</p>
+
+  <h3>SearchComponent</h3>
+  <p><strong>Path:</strong> <code>features/search/search</code>. <strong>Route:</strong> <code>/app/search</code>.</p>
+  <p>Search UI for reviews, issues, and repositories; calls <code>GET /api/search</code>.</p>
+
+  <h3>HelpComponent</h3>
+  <p><strong>Path:</strong> <code>features/help/help</code>. <strong>Route:</strong> <code>/app/help</code>.</p>
+  <p>Help and support content, links to docs or contact.</p>
+
+  <h3>PricingComponent</h3>
+  <p><strong>Path:</strong> <code>features/pricing/pricing</code>. <strong>Route:</strong> <code>/app/pricing</code>.</p>
+  <p>Pricing plans and upgrade flow; may use subscription API.</p>
+
+  <h3>AdminComponent</h3>
+  <p><strong>Path:</strong> <code>features/admin/admin</code>. <strong>Route:</strong> <code>/app/admin</code>.</p>
+  <p>Admin panel: stats, user list, user detail. Protected by <code>adminGuard</code> (role ADMIN).</p>
+</div>

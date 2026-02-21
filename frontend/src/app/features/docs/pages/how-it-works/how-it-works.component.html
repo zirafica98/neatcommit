@@ -1,0 +1,38 @@
+<div class="doc-page">
+  <h1>How it works</h1>
+  <p>
+    NeatCommit runs as a GitHub App. From the user’s perspective, the flow is: install the app, open a pull request, get results.
+    Under the hood, webhooks, queues, and optional AI all play a role.
+  </p>
+
+  <h2>1. Install the GitHub App</h2>
+  <p>
+    The user signs in via GitHub OAuth (or completes installation with an installation ID). They then install the NeatCommit GitHub App
+    on their account or organization and grant access to the repositories they want to analyze. No code changes are required in the repo.
+  </p>
+
+  <h2>2. Open a pull request</h2>
+  <p>
+    When a pull request is opened or updated, GitHub sends a webhook to the backend (<code>POST /webhook/github</code>). The backend validates
+    the webhook signature, then enqueues an analysis job (BullMQ). A worker picks up the job and:
+  </p>
+  <ul>
+    <li>Fetches the PR diff and file contents via the GitHub API.</li>
+    <li>Detects language per file and runs regex/pattern-based security checks.</li>
+    <li>For files with critical/high issues or high complexity, optionally calls the LLM for deeper analysis.</li>
+    <li>Stores findings and scores in the database and posts comments on the PR.</li>
+  </ul>
+
+  <h2>3. Review and ship</h2>
+  <p>
+    The user sees the results in two places: in the NeatCommit web app (dashboard, review detail, repositories) and as inline comments on the PR.
+    The app shows security scores, issues by severity, and suggested fixes. Users can export reports (e.g. PDF, CSV, Excel) and, on paid plans,
+    use advanced features such as documentation generation.
+  </p>
+
+  <h2>Subscription and limits</h2>
+  <p>
+    Access is gated by subscription: free and paid plans with limits on reviews per month and number of repositories.
+    The backend checks subscription and plan before running analyses and before allowing certain actions (e.g. documentation generation).
+  </p>
+</div>
