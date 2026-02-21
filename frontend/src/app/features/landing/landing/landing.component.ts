@@ -1,18 +1,48 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { SubscriptionService, Plan } from '../../../core/services/subscription.service';
 
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, RouterModule, MatButtonModule, MatIconModule, MatProgressBarModule],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss',
 })
-export class LandingComponent {
+export class LandingComponent implements OnInit {
   currentYear = new Date().getFullYear();
+  /** Planovi učitani iz API-ja – isti izvor kao u app-u (/api/subscription/plans). */
+  plans: Plan[] = [];
+  plansLoading = true;
+  plansError: string | null = null;
+
+  constructor(private subscriptionService: SubscriptionService) {}
+
+  ngOnInit(): void {
+    this.subscriptionService.getPlans().subscribe({
+      next: (res) => {
+        this.plans = res.plans;
+        this.plansLoading = false;
+      },
+      error: () => {
+        this.plansError = 'Pricing unavailable. Please try again later.';
+        this.plansLoading = false;
+      },
+    });
+  }
+
+  getPlanPriceDisplay(plan: Plan): string {
+    return plan.price === 0 ? '$0' : `$${plan.price}`;
+  }
+
+  getPlanIntervalDisplay(plan: Plan): string {
+    return `/${plan.interval}`;
+  }
+
   features = [
     {
       icon: 'security',

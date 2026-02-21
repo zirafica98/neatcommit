@@ -70,61 +70,63 @@
     </div>
   </section>
 
-  <!-- Pricing -->
+  <!-- Pricing (isti podaci kao u app-u: GET /api/subscription/plans) -->
   <section id="pricing" class="pricing">
     <h2 class="section-title">Simple pricing</h2>
     <p class="section-subtitle">Start free, upgrade when you need more.</p>
-    <div class="pricing-grid">
-      <article class="pricing-card">
-        <div class="plan-badge free">
-          <mat-icon>free_breakfast</mat-icon>
+
+    <div *ngIf="plansLoading" class="pricing-loading">
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      <p>Loading plans…</p>
+    </div>
+    <div *ngIf="plansError" class="pricing-error">
+      <mat-icon>error_outline</mat-icon>
+      <p>{{ plansError }}</p>
+    </div>
+
+    <div *ngIf="!plansLoading && !plansError && plans.length" class="pricing-grid">
+      <article
+        *ngFor="let plan of plans"
+        class="pricing-card"
+        [class.featured]="plan.id === 'PRO'"
+      >
+        <span *ngIf="plan.id === 'PRO'" class="badge-popular">Popular</span>
+        <div
+          class="plan-badge"
+          [class.free]="plan.id === 'FREE'"
+          [class.pro]="plan.id === 'PRO'"
+          [class.enterprise]="plan.id === 'ENTERPRISE'"
+        >
+          <mat-icon>{{ plan.id === 'FREE' ? 'free_breakfast' : plan.id === 'PRO' ? 'workspace_premium' : 'business' }}</mat-icon>
         </div>
-        <h3>FREE</h3>
+        <h3>{{ plan.name }}</h3>
         <div class="plan-price">
-          <span class="price">$0</span>
-          <span class="interval">/month</span>
+          <span class="price">{{ getPlanPriceDisplay(plan) }}</span>
+          <span class="interval">{{ getPlanIntervalDisplay(plan) }}</span>
         </div>
         <ul class="plan-features">
-          <li><mat-icon>check_circle</mat-icon> Limited reviews per month</li>
-          <li><mat-icon>check_circle</mat-icon> 1 repository</li>
-          <li><mat-icon>check_circle</mat-icon> Security analysis</li>
-          <li><mat-icon>check_circle</mat-icon> Dashboard & reports</li>
+          <li *ngFor="let feature of plan.features">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ feature }}</span>
+          </li>
         </ul>
-        <a routerLink="/auth/login" mat-stroked-button class="pricing-cta">Get started</a>
-      </article>
-      <article class="pricing-card featured">
-        <span class="badge-popular">Popular</span>
-        <div class="plan-badge pro">
-          <mat-icon>workspace_premium</mat-icon>
-        </div>
-        <h3>PRO</h3>
-        <div class="plan-price">
-          <span class="price">$19</span>
-          <span class="interval">/month</span>
-        </div>
-        <ul class="plan-features">
-          <li><mat-icon>check_circle</mat-icon> More reviews per month</li>
-          <li><mat-icon>check_circle</mat-icon> Multiple repositories</li>
-          <li><mat-icon>check_circle</mat-icon> AI documentation</li>
-          <li><mat-icon>check_circle</mat-icon> Priority support</li>
-        </ul>
-        <a routerLink="/auth/login" mat-raised-button color="primary" class="pricing-cta">Get started</a>
-      </article>
-      <article class="pricing-card">
-        <div class="plan-badge enterprise">
-          <mat-icon>business</mat-icon>
-        </div>
-        <h3>ENTERPRISE</h3>
-        <div class="plan-price">
-          <span class="price">Custom</span>
-        </div>
-        <ul class="plan-features">
-          <li><mat-icon>check_circle</mat-icon> Unlimited reviews</li>
-          <li><mat-icon>check_circle</mat-icon> Unlimited repositories</li>
-          <li><mat-icon>check_circle</mat-icon> All PRO features</li>
-          <li><mat-icon>check_circle</mat-icon> Dedicated support</li>
-        </ul>
-        <a routerLink="/auth/login" mat-stroked-button class="pricing-cta">Contact us</a>
+        <a
+          *ngIf="plan.id === 'PRO'"
+          routerLink="/auth/login"
+          mat-raised-button
+          color="primary"
+          class="pricing-cta"
+        >
+          Get started
+        </a>
+        <a
+          *ngIf="plan.id !== 'PRO'"
+          routerLink="/auth/login"
+          mat-stroked-button
+          class="pricing-cta"
+        >
+          {{ plan.id === 'ENTERPRISE' ? 'Contact us' : 'Get started' }}
+        </a>
       </article>
     </div>
   </section>
