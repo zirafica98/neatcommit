@@ -206,6 +206,22 @@ export class AuthService {
   }
 
   /**
+   * Disconnect GitHub account from NeatCommit.
+   * Calls API then logs out and redirects to login.
+   */
+  disconnectGitHub(): Observable<{ message: string }> {
+    return this.apiService.post<{ message: string }>('/api/auth/disconnect', {}).pipe(
+      tap(() => {
+        this.logout();
+      }),
+      catchError((error) => {
+        console.error('Disconnect error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
    * Logout
    */
   logout(): void {

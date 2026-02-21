@@ -37,6 +37,9 @@ export class WelcomeTourComponent implements OnInit, OnDestroy {
   /** Tour se ne prikazuje na auth stranicama (login, install, callback, installation-wait). */
   isOnAuthRoute = false;
 
+  /** Da li smo već pokrenuli auto-tour u ovoj sesiji (samo prvi put posle logina). */
+  private hasAutoStartedThisSession = false;
+
   private subscriptions = new Subscription();
 
   constructor(
@@ -75,8 +78,13 @@ export class WelcomeTourComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Auto-start tour samo kada korisnik NIJE na auth stranici (tooltipi imaju smisla tek posle logina)
-    if (this.tourService.shouldShowTour() && !this.isOnAuthRoute) {
+    // Auto-start tour samo prvi put kad se korisnik uloguje (jednom po sesiji, ako nije već završio tour)
+    if (
+      !this.hasAutoStartedThisSession &&
+      this.tourService.shouldShowTour() &&
+      !this.isOnAuthRoute
+    ) {
+      this.hasAutoStartedThisSession = true;
       setTimeout(() => {
         this.tourService.startTour();
       }, 1000);

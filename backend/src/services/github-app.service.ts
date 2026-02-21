@@ -283,7 +283,7 @@ export async function getInstallationOctokit(installationId: number): Promise<In
 
 /**
  * Proverava da li je App instaliran na datoj instalaciji
- * 
+ *
  * @param installationId - GitHub installation ID
  * @returns true ako je instaliran, false ako nije
  */
@@ -295,4 +295,62 @@ export async function isAppInstalled(installationId: number): Promise<boolean> {
     logger.warn('App not installed or access denied:', { installationId, error });
     return false;
   }
+}
+
+/**
+ * Uklanja (uninstall) GitHub App sa korisničkog / org GitHub naloga.
+ * Koristi GitHub API: DELETE /app/installations/:installation_id (zahteva App JWT).
+ *
+ * @param installationId - GitHub installation ID (integer)
+ * @returns true ako je uklanjanje uspelo ili installation više ne postoji (404), false na grešku
+ */
+export async function deleteAppInstallation(installationId: number): Promise<boolean> {
+  let token: string;
+  try {
+    token = createGitHubAppJwt();
+  } catch (e) {
+    logger.error('Failed to create GitHub App JWT for delete installation', {
+      installationId,
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return false;
+  }
+
+  const res = await fetch(
+    `https://api.github.com/app/installations/${installationId}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'Elementer-Backend-GitHub-App',
+      },
+    }
+  );
+
+  if (res.status === 204) {
+    logger.info('GitHub App installation deleted', { installationId });
+    return true;
+  }
+
+  if (res.status === 404) {
+    logger.warn('GitHub installation already deleted or not found', { installationId });
+    return true; // tretiraj kao uspeh za naš flow
+  }
+
+  const body = await res.text();
+  let errMsg = body;
+  try {
+    const j = JSON.parse(body);
+    errMsg = (j as { message?: string }).message || body;
+  } catch {
+    // use body as is
+  }
+  logger.error('GitHub API delete installation failed', {
+    installationId,
+    status: res.status,
+    message: errMsg,
+  });
+  return false;
 }

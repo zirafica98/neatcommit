@@ -18,6 +18,7 @@ import {
 } from '../../services/auth.service';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../../utils/password';
 import prisma from '../../config/database';
+import { deleteAppInstallation } from '../../services/github-app.service';
 
 const router = Router();
 
@@ -774,8 +775,82 @@ router.post('/login', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/auth/disconnect
+ *
+ * Odvezuje GitHub nalog od NeatCommit korisnika.
+ * Postavlja user.githubId na null i odvezuje sve instalacije od korisnika.
+ * Zahtev: Bearer token. Posle disconnect-a korisnik može da se uloguje samo putem username/password (ako ima lozinku).
+ */
+router.post('/disconnect', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    }
+
+    const token = authHeader.substring(7);
+    const payload = verifyAccessToken(token);
+    if (!payload) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: { installations: { where: { userId: { not: null } } } },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.githubId == null) {
+      return res.status(400).json({
+        error: 'Account is not linked to GitHub',
+        message: 'Your account is not connected to a GitHub account.',
+      });
+    }
+
+    // Ukloni GitHub App sa korisnikovog GitHub naloga (uninstall)
+    for (const inst of user.installations) {
+      const deleted = await deleteAppInstallation(inst.installationId);
+      if (!deleted) {
+        logger.warn('GitHub uninstall failed for installation, continuing with DB disconnect', {
+          installationId: inst.installationId,
+        });
+      }
+    }
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: user.id },
+        data: { githubId: null },
+      }),
+      prisma.installation.updateMany({
+        where: { userId: user.id },
+        data: { userId: null },
+      }),
+    ]);
+
+    logger.info('GitHub account disconnected', {
+      userId: user.id,
+      username: user.username,
+    });
+
+    return res.json({
+      message: 'GitHub account disconnected successfully. You can sign in again with GitHub to reconnect.',
+    });
+  } catch (error) {
+    logger.error('Disconnect GitHub failed:', error);
+    return res.status(500).json({
+      error: 'Failed to disconnect account',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
  * POST /api/auth/logout
- * 
+ *
  * Logout (client-side samo briše token, ali endpoint postoji za konzistentnost)
  */
 router.post('/logout', (_req: Request, res: Response) => {

@@ -153,10 +153,24 @@ export class SettingsComponent implements OnInit {
   }
 
   disconnectAccount(): void {
-    if (confirm('Are you sure you want to disconnect your GitHub account? You will need to reconnect to use NeatCommit.')) {
-      // This would typically call an API endpoint to disconnect
-      // For now, just show a message
-      alert('Account disconnection feature coming soon. Please contact support if you need to disconnect your account.');
+    if (
+      !confirm(
+        'Are you sure you want to disconnect your GitHub account? You will be logged out and will need to sign in with GitHub again to reconnect.'
+      )
+    ) {
+      return;
     }
+    this.authService.disconnectGitHub().subscribe({
+      next: () => {
+        // logout() is called inside disconnectGitHub(), redirect happens automatically
+      },
+      error: (err) => {
+        const message =
+          err?.error?.message ||
+          err?.error?.error ||
+          'Failed to disconnect account. Please try again.';
+        alert(message);
+      },
+    });
   }
 }
