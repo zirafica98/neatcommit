@@ -131,17 +131,17 @@ export async function exchangeCodeForToken(code: string): Promise<string> {
 }
 
 /**
- * Kreira ili ažurira user u bazi na osnovu GitHub podataka
+ * Kreira ili ažurira user u bazi na osnovu GitHub podataka.
+ * Ako je korisnik ranije odvezao GitHub (githubId = null), pronalazimo ga po username-u i ponovo povezujemo.
  */
 export async function findOrCreateUser(githubUser: any): Promise<User> {
-  // Pronađi postojećeg user-a
+  // 1) Pronađi po githubId (već povezan nalog)
   let user = await prisma.user.findUnique({
     where: { githubId: githubUser.id },
   });
 
   if (user) {
-    // Ažuriraj user informacije
-    user = await prisma.user.update({
+    return prisma.user.update({
       where: { id: user.id },
       data: {
         username: githubUser.login,
@@ -150,18 +150,33 @@ export async function findOrCreateUser(githubUser: any): Promise<User> {
         name: githubUser.name || null,
       },
     });
-  } else {
-    // Kreiraj novog user-a
-    user = await prisma.user.create({
+  }
+
+  // 2) Nema po githubId – možda je odvezao GitHub (reconnect). Pronađi po username-u.
+  user = await prisma.user.findUnique({
+    where: { username: githubUser.login },
+  });
+
+  if (user) {
+    return prisma.user.update({
+      where: { id: user.id },
       data: {
         githubId: githubUser.id,
-        username: githubUser.login,
-        email: githubUser.email || null,
-        avatarUrl: githubUser.avatar_url || null,
-        name: githubUser.name || null,
+        email: githubUser.email ?? user.email,
+        avatarUrl: githubUser.avatar_url ?? user.avatarUrl,
+        name: githubUser.name ?? user.name,
       },
     });
   }
 
-  return user;
+  // 3) Nov korisnik – kreiraj
+  return prisma.user.create({
+    data: {
+      githubId: githubUser.id,
+      username: githubUser.login,
+      email: githubUser.email || null,
+      avatarUrl: githubUser.avatar_url || null,
+      name: githubUser.name || null,
+    },
+  });
 }

@@ -19,8 +19,8 @@ const app: Express = express();
 
 app.disable('x-powered-by');
 
-// Trust proxy - potrebno za rate limiter kada se koristi X-Forwarded-For header
-app.set('trust proxy', true);
+// Trust exactly one proxy (e.g. Render). "true" would allow IP spoofing and breaks express-rate-limit.
+app.set('trust proxy', 1);
 
 // Security headers. HSTS samo u production (na localhost remeti development).
 app.use(helmet({
