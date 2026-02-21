@@ -7,14 +7,14 @@
   <div *ngIf="error" class="error-container">
     <mat-icon color="warn">error</mat-icon>
     <p>{{ error }}</p>
-    <button mat-raised-button color="primary" [routerLink]="['/reviews']">
+    <button mat-raised-button color="primary" [routerLink]="['/app/reviews']">
       Back to Reviews
     </button>
   </div>
 
   <div *ngIf="!loading && !error && review" class="review-detail-content">
     <div class="review-header-section">
-      <button mat-icon-button [routerLink]="['/reviews']">
+      <button mat-icon-button [routerLink]="['/app/reviews']">
         <mat-icon>arrow_back</mat-icon>
       </button>
       <div class="header-info">

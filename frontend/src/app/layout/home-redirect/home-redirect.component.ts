@@ -23,12 +23,12 @@ export class HomeRedirectComponent implements OnInit {
     this.authService.getCurrentUser().pipe(take(1)).subscribe({
       next: (user) => {
         if (user?.role === 'ADMIN') {
-          this.router.navigate(['/admin'], { replaceUrl: true });
+          this.router.navigate(['/app/admin'], { replaceUrl: true });
         } else {
-          this.router.navigate(['/dashboard'], { replaceUrl: true });
+          this.router.navigate(['/app/dashboard'], { replaceUrl: true });
         }
       },
-      error: () => this.router.navigate(['/dashboard'], { replaceUrl: true }),
+      error: () => this.router.navigate(['/app/dashboard'], { replaceUrl: true }),
     });
   }
 }

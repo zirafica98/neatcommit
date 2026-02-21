@@ -1,0 +1,118 @@
+<div class="landing">
+  <!-- Header -->
+  <header class="landing-header">
+    <a routerLink="/" class="logo">
+      <mat-icon>security</mat-icon>
+      <span>NeatCommit</span>
+    </a>
+    <nav class="nav">
+      <a href="#features">Features</a>
+      <a href="#how-it-works">How it works</a>
+      <a routerLink="/app" class="nav-app">Open app</a>
+      <a routerLink="/auth/login" class="btn-login">Log in</a>
+      <a routerLink="/auth/login" class="btn-start" mat-flat-button color="primary">
+        Get started
+      </a>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">
+        Code reviews that <span class="gradient-text">secure</span> your repo
+      </h1>
+      <p class="hero-subtitle">
+        NeatCommit analyzes every pull request for security issues and best practices.
+        Install the GitHub App, open a PR, get results in minutes.
+      </p>
+      <div class="hero-actions">
+        <a routerLink="/auth/login" mat-raised-button color="primary" class="hero-cta">
+          Start for free
+          <mat-icon>arrow_forward</mat-icon>
+        </a>
+        <a href="#features" mat-stroked-button class="hero-secondary">
+          See how it works
+        </a>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="hero-card">
+        <div class="hero-card-header">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <div class="hero-card-body">
+          <div class="mock-line"></div>
+          <div class="mock-line short"></div>
+          <div class="mock-line"></div>
+          <div class="mock-badge">Security score: 87</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="features">
+    <h2 class="section-title">Built for modern teams</h2>
+    <p class="section-subtitle">One GitHub App. Fewer bugs. Better code.</p>
+    <div class="features-grid">
+      <article *ngFor="let f of features" class="feature-card">
+        <div class="feature-icon">
+          <mat-icon>{{ f.icon }}</mat-icon>
+        </div>
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.description }}</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section id="how-it-works" class="how">
+    <h2 class="section-title">How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">1</span>
+        <h3>Install the GitHub App</h3>
+        <p>Connect your account and choose repositories. No code changes needed.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">2</span>
+        <h3>Open a pull request</h3>
+        <p>We analyze the diff automatically. Results appear in the NeatCommit dashboard.</p>
+      </div>
+      <div class="step">
+        <span class="step-num">3</span>
+        <h3>Review and ship</h3>
+        <p>See security scores, issues by severity, and suggested fixes. Merge with confidence.</p>
+      </div>
+    </div>
+    <div class="how-cta">
+      <a routerLink="/auth/login" mat-raised-button color="primary" class="big-cta">
+        Get started with NeatCommit
+        <mat-icon>arrow_forward</mat-icon>
+      </a>
+    </div>
+  </section>
+
+  <!-- Footer CTA -->
+  <section class="footer-cta">
+    <h2>Ready to improve your code quality?</h2>
+    <p>Join developers who ship safer code with every PR.</p>
+    <a routerLink="/auth/login" mat-raised-button color="primary" class="big-cta">
+      Start for free
+      <mat-icon>arrow_forward</mat-icon>
+    </a>
+  </section>
+
+  <footer class="landing-footer">
+    <div class="footer-inner">
+      <a routerLink="/" class="logo-small">
+        <mat-icon>security</mat-icon>
+        <span>NeatCommit</span>
+      </a>
+      <p class="copyright">&copy; {{ currentYear }} NeatCommit. All rights reserved.</p>
+    </div>
+  </footer>
+</div>

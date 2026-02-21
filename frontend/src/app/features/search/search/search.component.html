@@ -34,7 +34,7 @@
     <div *ngIf="(searchType === 'all' || searchType === 'reviews') && results.reviews.length > 0" class="results-section">
       <h2>Reviews ({{ results.reviews.length }})</h2>
       <div class="results-grid">
-        <mat-card *ngFor="let review of results.reviews" class="result-card" [routerLink]="['/reviews', review.id]">
+        <mat-card *ngFor="let review of results.reviews" class="result-card" [routerLink]="['/app/reviews', review.id]">
           <mat-card-header>
             <mat-card-title>{{ review.prTitle }}</mat-card-title>
             <mat-card-subtitle>{{ review.repository.fullName }}</mat-card-subtitle>
@@ -78,7 +78,7 @@
     <div *ngIf="(searchType === 'all' || searchType === 'repositories') && results.repositories.length > 0" class="results-section">
       <h2>Repositories ({{ results.repositories.length }})</h2>
       <div class="results-grid">
-        <mat-card *ngFor="let repo of results.repositories" class="result-card" [routerLink]="['/repositories']">
+        <mat-card *ngFor="let repo of results.repositories" class="result-card" [routerLink]="['/app/repositories']">
           <mat-card-header>
             <mat-card-title>{{ repo.fullName }}</mat-card-title>
             <mat-card-subtitle>

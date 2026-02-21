@@ -54,7 +54,7 @@
               Renew your subscription to avoid service interruption.
             </p>
           </div>
-          <button mat-raised-button color="primary" routerLink="/pricing">
+          <button mat-raised-button color="primary" routerLink="/app/pricing">
             <mat-icon>workspace_premium</mat-icon>
             Select Plan
           </button>
@@ -72,7 +72,7 @@
           <span>Current Plan: {{ subscription.subscription.planType }}</span>
         </mat-card-title>
         <mat-card-subtitle>
-          <a routerLink="/pricing" class="upgrade-link">Upgrade Plan</a>
+          <a routerLink="/app/pricing" class="upgrade-link">Upgrade Plan</a>
         </mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
@@ -280,7 +280,7 @@
     <mat-card class="reviews-card">
       <mat-card-header>
         <mat-card-title>Recent Reviews</mat-card-title>
-        <button mat-button routerLink="/reviews">View All</button>
+        <button mat-button routerLink="/app/reviews">View All</button>
       </mat-card-header>
       <mat-card-content>
         <div *ngIf="stats.recentReviews.length === 0" class="empty-state">
@@ -290,7 +290,7 @@
         <div *ngFor="let review of stats.recentReviews" 
              class="review-item" 
              [class.analyzing]="isAnalyzing(review.id)"
-             [routerLink]="['/reviews', review.id]">
+             [routerLink]="['/app/reviews', review.id]">
           <div class="review-header">
             <div class="review-title-section">
               <h4>{{ review.githubPrTitle }}</h4>

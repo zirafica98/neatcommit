@@ -64,6 +64,12 @@ export class LoginComponent implements OnInit {
     });
   }
 
+  private get returnUrl(): string {
+    const url = this.route.snapshot.queryParams['returnUrl'];
+    if (url && typeof url === 'string' && url.startsWith('/app')) return url;
+    return '';
+  }
+
   toggleAdminLogin(): void {
     this.showAdminLogin = !this.showAdminLogin;
     this.loginError = null;
@@ -86,12 +92,8 @@ export class LoginComponent implements OnInit {
     this.authService.login(username, password).subscribe({
       next: (response) => {
         this.loading = false;
-        // Auth service će automatski sačuvati token i user
-        if (response.user?.role === 'ADMIN') {
-          this.router.navigate(['/admin']);
-        } else {
-          this.router.navigate(['/dashboard']);
-        }
+        const url = this.returnUrl || (response.user?.role === 'ADMIN' ? '/app/admin' : '/app/dashboard');
+        this.router.navigate([url]);
       },
       error: (error) => {
         this.loading = false;

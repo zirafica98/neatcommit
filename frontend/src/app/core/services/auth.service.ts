@@ -229,7 +229,7 @@ export class AuthService {
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
     this.currentUserSubject.next(null);
-    this.router.navigate(['/auth/login']);
+    this.router.navigate(['/']);
   }
 
   /**
