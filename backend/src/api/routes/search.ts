@@ -15,12 +15,14 @@ const router = Router();
 const searchQuerySchema = z.object({
   q: z.string().min(1).max(200).trim(),
   type: z.enum(['reviews', 'issues', 'repositories', 'all']).optional(),
-  limit: z.preprocess((val) => {
-    const n = typeof val === 'string' ? parseInt(val, 10) : val;
+  limit: z.preprocess((val: unknown) => {
+    const parsed = typeof val === 'string' ? parseInt(val, 10) : val;
+    const n = Number(parsed);
     return Math.min(Math.max(Number.isNaN(n) ? 20 : n, 1), 50);
   }, z.number().min(1).max(50)),
-  offset: z.preprocess((val) => {
-    const n = typeof val === 'string' ? parseInt(val, 10) : val;
+  offset: z.preprocess((val: unknown) => {
+    const parsed = typeof val === 'string' ? parseInt(val, 10) : val;
+    const n = Number(parsed);
     return Math.min(Math.max(Number.isNaN(n) ? 0 : n, 0), 500);
   }, z.number().min(0).max(500)),
 });
