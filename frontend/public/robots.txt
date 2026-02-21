@@ -1,0 +1,15 @@
+# NeatCommit - allow crawlers for public pages
+User-agent: *
+Allow: /
+Allow: /docs
+Allow: /docs/
+Allow: /news
+Allow: /auth/login
+Allow: /auth/install
+
+# App (auth) and API are not indexed as separate resources
+Disallow: /api/
+Disallow: /app
+
+# Sitemap (replace with your production domain)
+Sitemap: https://neatcommit.com/sitemap.xml

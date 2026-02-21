@@ -1,11 +1,10 @@
 <div class="landing">
-  <!-- Header -->
-  <header class="landing-header">
-    <a routerLink="/" class="logo">
-      <mat-icon>security</mat-icon>
+  <header class="landing-header" role="banner">
+    <a routerLink="/" class="logo" aria-label="NeatCommit home">
+      <mat-icon aria-hidden="true">security</mat-icon>
       <span>NeatCommit</span>
     </a>
-    <nav class="nav">
+    <nav class="nav" aria-label="Main navigation">
       <a href="#features">Features</a>
       <a href="#how-it-works">How it works</a>
       <a href="#pricing">Pricing</a>
@@ -18,10 +17,10 @@
     </nav>
   </header>
 
-  <!-- Hero -->
-  <section class="hero">
+  <main id="main-content">
+  <section class="hero" aria-labelledby="hero-heading">
     <div class="hero-content">
-      <h1 class="hero-title">
+      <h1 class="hero-title" id="hero-heading">
         Code reviews that <span class="gradient-text">secure</span> your repo
       </h1>
       <p class="hero-subtitle">
@@ -55,9 +54,8 @@
     </div>
   </section>
 
-  <!-- Features -->
-  <section id="features" class="features">
-    <h2 class="section-title">Built for modern teams</h2>
+  <section id="features" class="features" aria-labelledby="features-heading">
+    <h2 id="features-heading" class="section-title">Built for modern teams</h2>
     <p class="section-subtitle">One GitHub App. Fewer bugs. Better code.</p>
     <div class="features-grid">
       <article *ngFor="let f of features" class="feature-card">
@@ -70,9 +68,8 @@
     </div>
   </section>
 
-  <!-- Pricing (isti podaci kao u app-u: GET /api/subscription/plans) -->
-  <section id="pricing" class="pricing">
-    <h2 class="section-title">Simple pricing</h2>
+  <section id="pricing" class="pricing" aria-labelledby="pricing-heading">
+    <h2 id="pricing-heading" class="section-title">Simple pricing</h2>
     <p class="section-subtitle">Start free, upgrade when you need more.</p>
 
     <div *ngIf="plansLoading" class="pricing-loading">
@@ -131,9 +128,8 @@
     </div>
   </section>
 
-  <!-- How it works -->
-  <section id="how-it-works" class="how">
-    <h2 class="section-title">How it works</h2>
+  <section id="how-it-works" class="how" aria-labelledby="how-heading">
+    <h2 id="how-heading" class="section-title">How it works</h2>
     <div class="steps">
       <div class="step">
         <span class="step-num">1</span>
@@ -159,9 +155,8 @@
     </div>
   </section>
 
-  <!-- Documentation -->
-  <section id="documentation" class="documentation">
-    <h2 class="section-title">Documentation</h2>
+  <section id="documentation" class="documentation" aria-labelledby="docs-heading">
+    <h2 id="docs-heading" class="section-title">Documentation</h2>
     <p class="section-subtitle">Learn what the app can do, how it works, and how it’s built.</p>
     <div class="doc-content">
       <p class="doc-text">
@@ -176,9 +171,8 @@
     </div>
   </section>
 
-  <!-- FAQ -->
-  <section id="faq" class="faq">
-    <h2 class="section-title">Frequently asked questions</h2>
+  <section id="faq" class="faq" aria-labelledby="faq-heading">
+    <h2 id="faq-heading" class="section-title">Frequently asked questions</h2>
     <div class="faq-list">
       <div *ngFor="let item of faqItems" class="faq-item">
         <button type="button" class="faq-question" (click)="toggleFaq(item)" [attr.aria-expanded]="item.open">
@@ -192,9 +186,8 @@
     </div>
   </section>
 
-  <!-- Footer CTA -->
-  <section class="footer-cta">
-    <h2>Ready to improve your code quality?</h2>
+  <section class="footer-cta" aria-labelledby="cta-heading">
+    <h2 id="cta-heading">Ready to improve your code quality?</h2>
     <p>Join developers who ship safer code with every PR.</p>
     <a routerLink="/auth/login" mat-raised-button color="primary" class="big-cta">
       Start for free
@@ -202,13 +195,15 @@
     </a>
   </section>
 
-  <footer class="landing-footer">
+  </main>
+
+  <footer class="landing-footer" role="contentinfo">
     <div class="footer-inner">
-      <a routerLink="/" class="logo-small">
-        <mat-icon>security</mat-icon>
+      <a routerLink="/" class="logo-small" aria-label="NeatCommit home">
+        <mat-icon aria-hidden="true">security</mat-icon>
         <span>NeatCommit</span>
       </a>
-      <nav class="footer-links">
+      <nav class="footer-links" aria-label="Footer navigation">
         <a routerLink="/docs">Documentation</a>
         <a routerLink="/news">News</a>
       </nav>

@@ -1,10 +1,11 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, Inject } from '@angular/core';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { SubscriptionService, Plan } from '../../../core/services/subscription.service';
+import { SeoService } from '../../../core/services/seo.service';
 
 @Component({
   selector: 'app-landing',
@@ -13,16 +14,23 @@ import { SubscriptionService, Plan } from '../../../core/services/subscription.s
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss',
 })
-export class LandingComponent implements OnInit {
+export class LandingComponent implements OnInit, OnDestroy {
   currentYear = new Date().getFullYear();
   /** Planovi učitani iz API-ja – isti izvor kao u app-u (/api/subscription/plans). */
   plans: Plan[] = [];
   plansLoading = true;
   plansError: string | null = null;
+  private faqScriptEl: HTMLScriptElement | null = null;
 
-  constructor(private subscriptionService: SubscriptionService) {}
+  constructor(
+    private subscriptionService: SubscriptionService,
+    private seo: SeoService,
+    @Inject(DOCUMENT) private doc: Document
+  ) {}
 
   ngOnInit(): void {
+    this.seo.setDefaults();
+    this.injectFaqSchema();
     this.subscriptionService.getPlans().subscribe({
       next: (res) => {
         this.plans = res.plans;
@@ -33,6 +41,29 @@ export class LandingComponent implements OnInit {
         this.plansLoading = false;
       },
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.faqScriptEl?.parentNode) {
+      this.faqScriptEl.parentNode.removeChild(this.faqScriptEl);
+    }
+  }
+
+  private injectFaqSchema(): void {
+    const faqSchema = {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: this.faqItems.map((item) => ({
+        '@type': 'Question',
+        name: item.question,
+        acceptedAnswer: { '@type': 'Answer', text: item.answer },
+      })),
+    };
+    const script = this.doc.createElement('script');
+    script.type = 'application/ld+json';
+    script.textContent = JSON.stringify(faqSchema);
+    this.doc.body.appendChild(script);
+    this.faqScriptEl = script;
   }
 
   getPlanPriceDisplay(plan: Plan): string {

@@ -1,9 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { SeoService } from '../../../core/services/seo.service';
 
 export interface NewsItem {
   date: string;
@@ -18,7 +19,7 @@ export interface NewsItem {
   templateUrl: './news.component.html',
   styleUrl: './news.component.scss',
 })
-export class NewsComponent {
+export class NewsComponent implements OnInit {
   /** Ažuriraj ovu listu kada objavljuješ novosti. */
   newsItems: NewsItem[] = [
     {
@@ -32,4 +33,14 @@ export class NewsComponent {
       body: 'Planned for the next period: improved AI documentation export, more granular repository settings, email digest for weekly security summaries, and better handling of large monorepos.',
     },
   ];
+
+  constructor(private seo: SeoService) {}
+
+  ngOnInit(): void {
+    this.seo.setPage({
+      title: 'News - NeatCommit',
+      description: 'NeatCommit product news, updates, and roadmap. See what we\'re building next for AI-powered code review and security.',
+      keywords: 'NeatCommit, news, updates, roadmap, code review',
+    });
+  }
 }

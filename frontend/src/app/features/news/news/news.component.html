@@ -1,13 +1,14 @@
 <div class="news-page">
-  <header class="news-header">
+  <header class="news-header" role="banner">
     <a routerLink="/" class="back-link">
-      <mat-icon>arrow_back</mat-icon>
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
       Back to home
     </a>
     <h1>News</h1>
     <p class="subtitle">Updates and what we're working on next</p>
   </header>
 
+  <main id="main-content" role="main">
   <div class="news-list">
     <article *ngFor="let item of newsItems" class="news-card">
       <time [attr.datetime]="item.date" class="news-date">{{ item.date }}</time>
@@ -18,8 +19,9 @@
 
   <div class="news-footer">
     <a routerLink="/" mat-flat-button color="primary">
-      <mat-icon>home</mat-icon>
+      <mat-icon aria-hidden="true">home</mat-icon>
       Back to home
     </a>
   </div>
+  </main>
 </div>

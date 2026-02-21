@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { SeoService } from '../../../core/services/seo.service';
 
 export interface DocNavItem {
   path: string;
@@ -17,7 +18,7 @@ export interface DocNavItem {
   templateUrl: './docs-layout.component.html',
   styleUrl: './docs-layout.component.scss',
 })
-export class DocsLayoutComponent {
+export class DocsLayoutComponent implements OnInit {
   navItems: DocNavItem[] = [
     { path: '/docs/overview', label: 'Overview', icon: 'info' },
     { path: '/docs/how-it-works', label: 'How it works', icon: 'play_circle' },
@@ -41,5 +42,16 @@ export class DocsLayoutComponent {
     return this.router.url.startsWith('/docs/api');
   }
 
-  constructor(public router: Router) {}
+  constructor(
+    public router: Router,
+    private seo: SeoService
+  ) {}
+
+  ngOnInit(): void {
+    this.seo.setPage({
+      title: 'Documentation - NeatCommit',
+      description: 'NeatCommit documentation: overview, how it works, tech stack, full API reference, and frontend components for developers.',
+      keywords: 'NeatCommit, documentation, API, code review, GitHub, security',
+    });
+  }
 }
