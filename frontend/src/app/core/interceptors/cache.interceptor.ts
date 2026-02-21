@@ -22,11 +22,12 @@ export const cacheInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req);
   }
 
-  // Ne cache-uj auth, export i subscription endpoint-e (za real-time update)
-  if (req.url.includes('/auth/') || 
+  // Ne cache-uj auth, export, subscription i documentation (za real-time update)
+  if (req.url.includes('/auth/') ||
       req.url.includes('/export/') ||
       req.url.includes('/download') ||
-      req.url.includes('/subscription')) {
+      req.url.includes('/subscription') ||
+      req.url.includes('/documentation')) {
     return next(req);
   }
 

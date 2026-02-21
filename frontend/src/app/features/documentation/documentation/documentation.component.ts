@@ -151,6 +151,9 @@ export class DocumentationComponent implements OnInit {
           duration: 3000,
         });
 
+        // Odmah učitaj listu da se prikaže "pending" i hasDocumentationInProgress bude true
+        this.loadDocumentations(this.selectedRepository!.id);
+
         // Polluj status dok se ne završi
         this.documentationService.pollDocumentationStatus(response.documentationId).subscribe({
           next: (doc) => {
@@ -172,6 +175,7 @@ export class DocumentationComponent implements OnInit {
           error: (error) => {
             console.error('Error polling documentation status:', error);
             this.generating = false;
+            this.loadDocumentations(this.selectedRepository!.id);
           },
         });
       },
