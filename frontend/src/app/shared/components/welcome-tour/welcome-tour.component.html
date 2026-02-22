@@ -1,4 +1,4 @@
-<div *ngIf="tourActive && !isOnAuthRoute" class="tour-overlay" #tourOverlay>
+<div *ngIf="tourActive && isOnAppRoute" class="tour-overlay" #tourOverlay>
   <!-- Highlight overlay -->
   <div class="tour-highlight" *ngIf="targetElement" [style]="getHighlightStyle()"></div>
   

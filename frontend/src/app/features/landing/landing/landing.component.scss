@@ -92,6 +92,8 @@
 
     .menu-toggle {
       display: flex;
+      z-index: 110;
+      position: relative;
     }
 
     .nav-overlay {
@@ -102,8 +104,8 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(15, 15, 26, 0.95);
-      backdrop-filter: blur(8px);
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(6px);
       z-index: 99;
       opacity: 0;
       visibility: hidden;
@@ -116,24 +118,41 @@
     }
 
     .nav {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 100;
       flex-direction: column;
       align-items: stretch;
       gap: 0;
-      padding: 4rem 1.5rem 2rem;
+      padding: 5rem 1.5rem 2rem 1.5rem;
       max-height: 100vh;
       overflow-y: auto;
+      background: #0f0f1a;
+      visibility: hidden;
+      pointer-events: none;
+      transition: visibility 0.2s;
+
+      &.nav-mobile-open {
+        visibility: visible;
+        pointer-events: auto;
+      }
 
       a {
-        padding: 0.875rem 0;
-        font-size: 1.1rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        min-height: 44px;
+        padding: 0.875rem 1rem;
+        font-size: 1.05rem;
+        line-height: 1.4;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        min-height: 48px;
         display: flex;
         align-items: center;
+        color: #e2e8f0;
       }
 
       .btn-start {
-        margin-top: 0.5rem;
+        margin-top: 1rem;
         justify-content: center;
         min-height: 48px;
       }

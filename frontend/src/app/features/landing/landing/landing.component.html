@@ -7,19 +7,18 @@
     <button type="button" class="menu-toggle" aria-label="Toggle menu" [attr.aria-expanded]="mobileMenuOpen" (click)="mobileMenuOpen = !mobileMenuOpen">
       <mat-icon aria-hidden="true">{{ mobileMenuOpen ? 'close' : 'menu' }}</mat-icon>
     </button>
-    <div class="nav-overlay" [class.open]="mobileMenuOpen" (click)="closeMobileMenu()">
-      <nav class="nav" aria-label="Main navigation" (click)="$event.stopPropagation()">
-        <a href="#features" (click)="closeMobileMenu()">Features</a>
-        <a href="#how-it-works" (click)="closeMobileMenu()">How it works</a>
-        <a href="#pricing" (click)="closeMobileMenu()">Pricing</a>
-        <a routerLink="/docs" (click)="closeMobileMenu()">Documentation</a>
-        <a routerLink="/news" (click)="closeMobileMenu()">News</a>
-        <a href="#faq" (click)="closeMobileMenu()">FAQ</a>
-        <a routerLink="/auth/login" class="btn-start" mat-flat-button color="primary" (click)="closeMobileMenu()">
-          Get started
-        </a>
-      </nav>
-    </div>
+    <div class="nav-overlay" [class.open]="mobileMenuOpen" (click)="closeMobileMenu()" role="button" tabindex="-1" aria-label="Close menu"></div>
+    <nav class="nav" [class.nav-mobile-open]="mobileMenuOpen" aria-label="Main navigation">
+      <a href="#features" (click)="closeMobileMenu()">Features</a>
+      <a href="#how-it-works" (click)="closeMobileMenu()">How it works</a>
+      <a href="#pricing" (click)="closeMobileMenu()">Pricing</a>
+      <a routerLink="/docs" (click)="closeMobileMenu()">Documentation</a>
+      <a routerLink="/news" (click)="closeMobileMenu()">News</a>
+      <a href="#faq" (click)="closeMobileMenu()">FAQ</a>
+      <a routerLink="/auth/login" class="btn-start" mat-flat-button color="primary" (click)="closeMobileMenu()">
+        Get started
+      </a>
+    </nav>
   </header>
 
   <main id="main-content">

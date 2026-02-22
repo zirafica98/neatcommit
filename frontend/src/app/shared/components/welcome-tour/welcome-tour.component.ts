@@ -37,7 +37,10 @@ export class WelcomeTourComponent implements OnInit, OnDestroy {
   /** Tour se ne prikazuje na auth stranicama (login, install, callback, installation-wait). */
   isOnAuthRoute = false;
 
-  /** Da li smo već pokrenuli auto-tour u ovoj sesiji (samo prvi put posle logina). */
+  /** Tour se prikazuje samo unutar app-a (/app/...), nikad na sajtu (/, /docs, /news). */
+  isOnAppRoute = false;
+
+  /** Da li smo već pokrenuli auto-tour u ovoj sesiji (samo prvi put kad uđe u app). */
   private hasAutoStartedThisSession = false;
 
   private subscriptions = new Subscription();
@@ -48,15 +51,25 @@ export class WelcomeTourComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    this.updateAuthRoute(this.router.url);
+    this.updateRouteFlags(this.router.url);
 
     this.subscriptions.add(
       this.router.events.pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd)
       ).subscribe((e) => {
-        this.updateAuthRoute(e.urlAfterRedirects);
-        if (this.isOnAuthRoute && this.tourActive) {
+        this.updateRouteFlags(e.urlAfterRedirects);
+        if ((this.isOnAuthRoute || !this.isOnAppRoute) && this.tourActive) {
           this.tourService.skipTour();
+        }
+        // Auto-start tour prvi put kad korisnik uđe u /app (npr. posle logina)
+        if (
+          !this.hasAutoStartedThisSession &&
+          this.isOnAppRoute &&
+          !this.isOnAuthRoute &&
+          this.tourService.shouldShowTour()
+        ) {
+          this.hasAutoStartedThisSession = true;
+          setTimeout(() => this.tourService.startTour(), 1000);
         }
       })
     );
@@ -78,21 +91,21 @@ export class WelcomeTourComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Auto-start tour samo prvi put kad se korisnik uloguje (jednom po sesiji, ako nije već završio tour)
+    // Auto-start tour ako je već na /app pri učitavanju (inace se pokreće u router subscription)
     if (
       !this.hasAutoStartedThisSession &&
       this.tourService.shouldShowTour() &&
+      this.isOnAppRoute &&
       !this.isOnAuthRoute
     ) {
       this.hasAutoStartedThisSession = true;
-      setTimeout(() => {
-        this.tourService.startTour();
-      }, 1000);
+      setTimeout(() => this.tourService.startTour(), 1000);
     }
   }
 
-  private updateAuthRoute(url: string): void {
+  private updateRouteFlags(url: string): void {
     this.isOnAuthRoute = url.startsWith('/auth');
+    this.isOnAppRoute = url.startsWith('/app');
   }
 
   ngOnDestroy(): void {
