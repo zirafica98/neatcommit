@@ -16,7 +16,7 @@
 import { CodeStructure } from '../utils/ast-parser';
 import { logger } from '../utils/logger';
 import { detectLanguage } from '../utils/language-detector';
-import { getSecurityPatterns } from './security-patterns';
+import { getSecurityPatterns, getPatternId } from './security-patterns';
 
 export interface SecurityIssue {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -29,6 +29,7 @@ export interface SecurityIssue {
   suggestedFix?: string;
   cweId?: string;
   owaspCategory?: string;
+  ruleId?: string;
 }
 
 /**
@@ -69,6 +70,7 @@ export function analyzeSecurity(
           suggestedFix: pattern.suggestedFix,
           cweId: pattern.cweId,
           owaspCategory: pattern.owaspCategory,
+          ruleId: getPatternId(pattern),
         });
       }
     });

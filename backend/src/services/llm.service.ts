@@ -46,6 +46,10 @@ export interface LLMIssue {
   line?: number;
   suggestedFix?: string;
   explanation?: string;
+  /** Simple explanation for less experienced developers (plain language) */
+  simpleExplanation?: string;
+  /** Step-by-step fix instructions */
+  stepByStepFix?: string;
 }
 
 /**
@@ -180,9 +184,12 @@ function buildAnalysisPrompt(
   // Dodaj kod
   prompt += `Code:\n\`\`\`\n${optimizedCode}\n\`\`\`\n\n`;
   
-  // Kraći instrukcije
-  prompt += `Find issues Security Service missed. JSON format:\n`;
-  prompt += `{"summary":"...","issues":[{"severity":"HIGH","category":"SECURITY","title":"...","description":"...","line":42,"suggestedFix":"..."}],"suggestions":["..."],"score":85}\n`;
+  // Kraći instrukcije + prirodni jezik za manje iskusne
+  prompt += `Find issues Security Service missed. For each issue also provide:\n`;
+  prompt += `- simpleExplanation: one sentence in plain language (for junior devs)\n`;
+  prompt += `- stepByStepFix: short step-by-step fix (optional)\n`;
+  prompt += `JSON format:\n`;
+  prompt += `{"summary":"...","issues":[{"severity":"HIGH","category":"SECURITY","title":"...","description":"...","line":42,"suggestedFix":"...","simpleExplanation":"...","stepByStepFix":"..."}],"suggestions":["..."],"score":85}\n`;
 
   return prompt;
 }
@@ -191,7 +198,7 @@ function buildAnalysisPrompt(
  * System prompt za OpenAI
  */
 function getSystemPrompt(): string {
-  return `You are an expert code reviewer specializing in JavaScript and TypeScript. 
+  return `You are an expert code reviewer specializing in JavaScript and TypeScript.
 Your role is to analyze code and provide constructive feedback focusing on:
 - Security vulnerabilities
 - Performance issues
@@ -199,7 +206,8 @@ Your role is to analyze code and provide constructive feedback focusing on:
 - Best practices
 - Potential bugs
 
-Be specific, actionable, and professional in your feedback. Always provide line numbers when possible.`;
+Be specific, actionable, and professional. Always provide line numbers when possible.
+For each issue include: (1) simpleExplanation – one sentence in plain language for less experienced developers; (2) stepByStepFix – brief step-by-step fix when applicable.`;
 }
 
 /**

@@ -144,6 +144,7 @@ model Review {
   lowIssues         Int      @default(0)
   startedAt         DateTime?
   completedAt       DateTime?
+  qualityGatePassed Boolean?  // true/false when gate checked; null for legacy reviews
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 

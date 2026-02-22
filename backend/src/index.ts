@@ -1178,6 +1178,9 @@ app.use('/api/subscription', subscriptionLimiter, subscriptionRoutes); // Subscr
 import adminRoutes from './api/routes/admin';
 app.use('/api/admin', adminRoutes); // Admin endpoints (zahtevaju admin role)
 
+import analyzeRoutes from './api/routes/analyze';
+app.use('/api/analyze', apiLimiter, analyzeRoutes); // CI trigger: POST /api/analyze/trigger
+
 
 // Sentry error handler (mora biti pre custom error handler-a)
 // Sentry automatski hvata greške kroz init() poziv

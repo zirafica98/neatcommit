@@ -19,6 +19,8 @@ import { detectLanguage } from '../utils/language-detector';
 import { parseCode, CodeStructure } from '../utils/ast-parser';
 import { analyzeSecurity, SecurityIssue } from './security.service';
 import { analyzeWithLLM, LLMAnalysisResult, LLMIssue } from './llm.service';
+import { analyzeQuality } from './quality.service';
+import { analyzeIacFile } from './iac.service';
 import { logger } from '../utils/logger';
 
 export interface AnalysisResult {
@@ -43,9 +45,12 @@ export interface CombinedIssue {
   codeSnippet?: string;
   suggestedFix?: string;
   explanation?: string;
-  source: 'security' | 'llm'; // Odakle je problem nađen
+  simpleExplanation?: string;
+  stepByStepFix?: string;
+  source: 'security' | 'llm' | 'quality' | 'iac'; // Odakle je problem nađen
   cweId?: string;
   owaspCategory?: string;
+  ruleId?: string; // For config rules.disable / severityOverrides
 }
 
 /**
@@ -63,13 +68,41 @@ export async function analyzeFile(
 
   // 1. Detektuj jezik
   const languageInfo = detectLanguage(filename);
-  
+
+  // IaC fajlovi: samo IaC analiza, bez security/LLM
+  const isIacFile =
+    filename.endsWith('.tf') ||
+    filename.endsWith('.tfvars') ||
+    /Dockerfile(\.[^/]*)?$/.test(filename) ||
+    (/\.(yaml|yml)$/i.test(filename) && /(^|\/)(k8s|manifests|kubernetes)\//.test(filename));
+  if (isIacFile) {
+    const iacIssues = analyzeIacFile(code, filename);
+    const allIssues: CombinedIssue[] = iacIssues.map((q) => ({
+      severity: q.severity,
+      category: q.category,
+      title: q.title,
+      description: q.description,
+      line: q.line,
+      suggestedFix: q.suggestedFix,
+      source: 'iac',
+    }));
+    const score = allIssues.length === 0 ? 100 : Math.max(0, 100 - allIssues.length * 15);
+    return {
+      filename,
+      language: 'iac',
+      isSupported: true,
+      securityIssues: [],
+      allIssues,
+      summary: allIssues.length ? `IaC analysis: ${allIssues.length} issue(s) found` : 'No IaC issues found',
+      score,
+    };
+  }
+
   if (!languageInfo.isSupported) {
     logger.debug('Language not supported, skipping analysis', {
       filename,
       language: languageInfo.language,
     });
-    
     return {
       filename,
       language: languageInfo.language,
@@ -176,8 +209,27 @@ export async function analyzeFile(
     });
   }
 
-  // 5. Kombinuj sve rezultate
-  const allIssues = combineIssues(securityIssues, llmAnalysis?.issues || []);
+  // 5. Kombinuj security i LLM rezultate
+  let allIssues = combineIssues(securityIssues, llmAnalysis?.issues || []);
+
+  // 6. Quality (code smells, duplicates)
+  const qualityIssues = analyzeQuality(code, structure, filename);
+  qualityIssues.forEach((q) => {
+    allIssues.push({
+      severity: q.severity,
+      category: q.category,
+      title: q.title,
+      description: q.description,
+      line: q.line,
+      suggestedFix: q.suggestedFix,
+      source: 'quality',
+    });
+  });
+
+  // Sort again by severity
+  const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, INFO: 4 };
+  allIssues = allIssues.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
   const score = calculateScore(securityIssues, llmAnalysis);
   const summary = generateSummary(structure, securityIssues, llmAnalysis);
 
@@ -223,6 +275,7 @@ function combineIssues(
       source: 'security',
       cweId: issue.cweId,
       owaspCategory: issue.owaspCategory,
+      ruleId: issue.ruleId,
     });
   });
 
@@ -245,6 +298,8 @@ function combineIssues(
         line: issue.line,
         suggestedFix: issue.suggestedFix,
         explanation: issue.explanation,
+        simpleExplanation: issue.simpleExplanation,
+        stepByStepFix: issue.stepByStepFix,
         source: 'llm',
       });
     }

@@ -13,9 +13,9 @@
  * 4. Vraća jezik ili 'unknown'
  */
 
-export type SupportedLanguage = 
-  | 'javascript' 
-  | 'typescript' 
+export type SupportedLanguage =
+  | 'javascript'
+  | 'typescript'
   | 'java'
   | 'python'
   | 'php'
@@ -23,6 +23,17 @@ export type SupportedLanguage =
   | 'sql'
   | 'go'
   | 'ruby'
+  | 'swift'
+  | 'kotlin'
+  | 'rust'
+  | 'c'
+  | 'cpp'
+  | 'scala'
+  | 'shell'
+  | 'dart'
+  | 'r'
+  | 'terraform'
+  | 'dockerfile'
   | 'unknown';
 
 export interface LanguageInfo {
@@ -72,6 +83,46 @@ const EXTENSION_TO_LANGUAGE: Record<string, SupportedLanguage> = {
   '.rb': 'ruby',
   '.rbw': 'ruby',
   '.rake': 'ruby',
+
+  // Swift
+  '.swift': 'swift',
+
+  // Kotlin
+  '.kt': 'kotlin',
+  '.kts': 'kotlin',
+  '.ktm': 'kotlin',
+
+  // Rust
+  '.rs': 'rust',
+
+  // C / C++
+  '.c': 'c',
+  '.h': 'c',
+  '.cpp': 'cpp',
+  '.cc': 'cpp',
+  '.cxx': 'cpp',
+  '.hpp': 'cpp',
+  '.hxx': 'cpp',
+
+  // Scala
+  '.scala': 'scala',
+  '.sc': 'scala',
+
+  // Shell
+  '.sh': 'shell',
+  '.bash': 'shell',
+  '.zsh': 'shell',
+
+  // Dart
+  '.dart': 'dart',
+
+  // R
+  '.r': 'r',
+  '.R': 'r',
+
+  // IaC
+  '.tf': 'terraform',
+  '.tfvars': 'terraform',
 };
 
 /**
@@ -89,12 +140,15 @@ export function detectLanguage(filename: string): LanguageInfo {
     };
   }
 
-  // Ekstraktuj ekstenziju
+  // Dockerfile (nema ekstenziju)
+  const base = filename.split('/').pop() ?? '';
+  if (base === 'Dockerfile' || base.startsWith('Dockerfile.')) {
+    return { language: 'dockerfile', extension: '', isSupported: true };
+  }
+
   const extension = getFileExtension(filename);
-  
-  // Pronađi jezik
   const language = EXTENSION_TO_LANGUAGE[extension.toLowerCase()] || 'unknown';
-  
+
   return {
     language,
     extension,

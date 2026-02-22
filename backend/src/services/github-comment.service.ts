@@ -16,7 +16,8 @@
 import { createPRComment, createReviewComment } from './github.service';
 import {
   formatSummaryComment,
-  formatInlineComment,
+  formatInlineCommentWithSuggestion,
+  getReplacementLineForIssue,
   formatFileComment,
 } from '../utils/comment-formatter';
 import { AnalysisResult } from './analysis.service';
@@ -29,9 +30,19 @@ export interface CommentPostResult {
   totalComments: number;
 }
 
+export interface PostAnalysisCommentsOptions {
+  qualityGatePassed?: boolean;
+  fileContentByPath?: FileContentMap;
+}
+
+/**
+ * Map filename -> file content (za izračunavanje replacement linije za suggestion block).
+ */
+export type FileContentMap = Record<string, string>;
+
 /**
  * Postavlja sve komentare na PR
- * 
+ *
  * @param installationId - GitHub installation ID
  * @param owner - Repo owner
  * @param repo - Repo name
@@ -39,6 +50,7 @@ export interface CommentPostResult {
  * @param commitId - Commit SHA
  * @param results - Rezultati analize
  * @param reviewId - Review ID iz baze
+ * @param options - qualityGatePassed i fileContentByPath (za GitHub Apply suggestion)
  * @returns Rezultat postavljanja komentara
  */
 export async function postAnalysisComments(
@@ -48,7 +60,8 @@ export async function postAnalysisComments(
   pullNumber: number,
   commitId: string,
   results: AnalysisResult[],
-  reviewId: string
+  reviewId: string,
+  options?: PostAnalysisCommentsOptions
 ): Promise<CommentPostResult> {
   logger.info('Posting analysis comments to PR', {
     owner,
@@ -64,7 +77,9 @@ export async function postAnalysisComments(
 
   try {
     // 1. Postavi summary komentar
-    const summaryComment = formatSummaryComment(results, pullNumber);
+    const summaryComment = formatSummaryComment(results, pullNumber, {
+      qualityGatePassed: options?.qualityGatePassed,
+    });
     const summaryCommentResponse = await createPRComment(
       installationId,
       owner,
@@ -105,9 +120,24 @@ export async function postAnalysisComments(
     // Ograniči na prvih 20 inline komentara (GitHub limit)
     const issuesToComment = criticalAndHighIssues.slice(0, 20);
 
+    const fileContentByPath: FileContentMap = options?.fileContentByPath ?? {};
+
     for (const issue of issuesToComment) {
       try {
-        const inlineComment = formatInlineComment(issue, issue.codeSnippet);
+        let replacementLine: string | undefined;
+        const content = fileContentByPath[issue.filename];
+        if (content && issue.line) {
+          const lines = content.split(/\r?\n/);
+          const lineContent = lines[issue.line - 1];
+          if (lineContent !== undefined) {
+            replacementLine = getReplacementLineForIssue(issue.title, lineContent);
+          }
+        }
+        const inlineComment = formatInlineCommentWithSuggestion(
+          issue,
+          issue.codeSnippet,
+          replacementLine
+        );
 
         const reviewCommentResponse = await createReviewComment(
           installationId,

@@ -23,6 +23,15 @@ export interface ReviewCompletedNotification {
   criticalIssues: number;
 }
 
+export interface QualityGateFailedNotification {
+  repositoryName: string;
+  prTitle: string;
+  prUrl: string;
+  securityScore: number;
+  criticalIssues: number;
+  message?: string;
+}
+
 /**
  * Email transporter (configured via environment variables)
  */
@@ -156,6 +165,30 @@ export async function sendReviewCompletedNotification(
     subject,
     html,
   });
+}
+
+/**
+ * Send notification when quality gate fails (critical issues or score below threshold)
+ */
+export async function sendQualityGateFailedNotification(
+  email: string,
+  data: QualityGateFailedNotification
+): Promise<boolean> {
+  const subject = `Quality gate failed: ${data.repositoryName} - ${data.prTitle}`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: Arial, sans-serif; padding: 20px;">
+      <h2>Quality gate failed</h2>
+      <p><strong>Repository:</strong> ${data.repositoryName}</p>
+      <p><strong>PR:</strong> ${data.prTitle}</p>
+      <p><strong>Score:</strong> ${data.securityScore}/100 | <strong>Critical issues:</strong> ${data.criticalIssues}</p>
+      ${data.message ? `<p>${data.message}</p>` : ''}
+      <p><a href="${data.prUrl}">View PR and fix issues</a></p>
+    </body>
+    </html>
+  `;
+  return sendEmailNotification({ to: email, subject, html });
 }
 
 /**

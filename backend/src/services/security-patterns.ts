@@ -16,6 +16,19 @@ export interface SecurityPattern {
   suggestedFix: string;
   cweId?: string;
   owaspCategory?: string;
+  /** Rule id for config disable/severityOverrides (e.g. "hardcoded-password") */
+  id?: string;
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+}
+
+export function getPatternId(p: SecurityPattern): string {
+  return p.id ?? slugify(p.name);
 }
 
 /**
@@ -24,6 +37,7 @@ export interface SecurityPattern {
 const universalPatterns: SecurityPattern[] = [
   // Hardcoded secrets
   {
+    id: 'hardcoded-password',
     pattern: /password\s*[:=]\s*['"](.+?)['"]/gi,
     name: 'Hardcoded Password',
     severity: 'CRITICAL',
@@ -34,6 +48,7 @@ const universalPatterns: SecurityPattern[] = [
     owaspCategory: 'A07:2021 – Identification and Authentication Failures',
   },
   {
+    id: 'hardcoded-api-key',
     pattern: /api[_-]?key\s*[:=]\s*['"](.+?)['"]/gi,
     name: 'Hardcoded API Key',
     severity: 'CRITICAL',
@@ -44,6 +59,7 @@ const universalPatterns: SecurityPattern[] = [
     owaspCategory: 'A07:2021 – Identification and Authentication Failures',
   },
   {
+    id: 'hardcoded-secret',
     pattern: /secret\s*[:=]\s*['"](.+?)['"]/gi,
     name: 'Hardcoded Secret',
     severity: 'CRITICAL',
@@ -54,6 +70,7 @@ const universalPatterns: SecurityPattern[] = [
     owaspCategory: 'A07:2021 – Identification and Authentication Failures',
   },
   {
+    id: 'hardcoded-token',
     pattern: /token\s*[:=]\s*['"](.+?)['"]/gi,
     name: 'Hardcoded Token',
     severity: 'CRITICAL',
@@ -65,6 +82,7 @@ const universalPatterns: SecurityPattern[] = [
   },
   // Insecure HTTP
   {
+    id: 'insecure-http',
     pattern: /http:\/\/(?!localhost|127\.0\.0\.1)/gi,
     name: 'Insecure HTTP Connection',
     severity: 'MEDIUM',
@@ -86,6 +104,7 @@ const universalPatterns: SecurityPattern[] = [
     owaspCategory: 'A02:2021 – Cryptographic Failures',
   },
   {
+    id: 'weak-hash-sha1',
     pattern: /\bsha1\s*\(/gi,
     name: 'Weak Hash Algorithm (SHA1)',
     severity: 'HIGH',
@@ -94,6 +113,40 @@ const universalPatterns: SecurityPattern[] = [
     suggestedFix: 'Use SHA-256 or stronger algorithms',
     cweId: 'CWE-327',
     owaspCategory: 'A02:2021 – Cryptographic Failures',
+  },
+  // Secret scanning – known formats
+  {
+    id: 'secret-aws-key',
+    pattern: /\b(AKIA[A-Z0-9]{16})\b/g,
+    name: 'Possible AWS Access Key',
+    severity: 'CRITICAL',
+    category: 'SECURITY',
+    description: 'String matches AWS access key format. Do not commit real keys.',
+    suggestedFix: 'Use environment variables or a secrets manager',
+    cweId: 'CWE-798',
+    owaspCategory: 'A07:2021 – Identification and Authentication Failures',
+  },
+  {
+    id: 'secret-github-token',
+    pattern: /\b(ghp_[a-zA-Z0-9]{36,})\b/g,
+    name: 'Possible GitHub Personal Access Token',
+    severity: 'CRITICAL',
+    category: 'SECURITY',
+    description: 'String matches GitHub token format. Do not commit tokens.',
+    suggestedFix: 'Use GitHub Actions secrets or environment variables',
+    cweId: 'CWE-798',
+    owaspCategory: 'A07:2021 – Identification and Authentication Failures',
+  },
+  {
+    id: 'secret-jwt',
+    pattern: /\beyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g,
+    name: 'Possible JWT in source',
+    severity: 'HIGH',
+    category: 'SECURITY',
+    description: 'JWT-like string in code. Tokens should not be hardcoded.',
+    suggestedFix: 'Issue and validate JWTs at runtime; do not store in code',
+    cweId: 'CWE-798',
+    owaspCategory: 'A07:2021 – Identification and Authentication Failures',
   },
 ];
 

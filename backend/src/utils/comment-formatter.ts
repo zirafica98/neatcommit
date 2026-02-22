@@ -18,29 +18,39 @@ import { CombinedIssue } from '../services/analysis.service';
 
 /**
  * Formatira summary komentar za PR
- * 
+ *
  * @param results - Rezultati analize za sve fajlove
  * @param prNumber - PR broj
- * @returns Markdown formatiran summary komentar
+ * @param options - qualityGatePassed: false prikazuje poruku da gate nije prošao
  */
 export function formatSummaryComment(
   results: AnalysisResult[],
-  prNumber: number
+  prNumber: number,
+  options?: { qualityGatePassed?: boolean }
 ): string {
   const totalFiles = results.length;
   const analyzedFiles = results.filter((r) => r.isSupported).length;
   const allIssues = results.flatMap((r) => r.allIssues);
-  
+
   const criticalCount = allIssues.filter((i) => i.severity === 'CRITICAL').length;
   const highCount = allIssues.filter((i) => i.severity === 'HIGH').length;
   const mediumCount = allIssues.filter((i) => i.severity === 'MEDIUM').length;
   const lowCount = allIssues.filter((i) => i.severity === 'LOW').length;
-  
+
   const avgScore = results.reduce((sum, r) => sum + r.score, 0) / results.length;
   const scoreEmoji = getScoreEmoji(avgScore);
 
+  const qualityGatePassed = options?.qualityGatePassed !== false;
+
   let comment = `## 🔍 Code Analysis Results for PR #${prNumber}\n\n`;
-  
+
+  if (!qualityGatePassed) {
+    comment += `### ❌ Quality gate failed\n\n`;
+    if (criticalCount > 0) comment += `- **Critical issues** must be resolved before merge.\n`;
+    if (options?.qualityGatePassed === false && criticalCount === 0) comment += `- **Minimum score** threshold not met.\n`;
+    comment += `\n`;
+  }
+
   comment += `${scoreEmoji} **Security Score: ${Math.round(avgScore)}/100**\n\n`;
   
   comment += `### 📊 Summary\n\n`;
@@ -101,27 +111,56 @@ export function formatSummaryComment(
 }
 
 /**
- * Formatira inline komentar za specifičnu liniju koda
- * 
- * @param issue - Issue koji se komentariše
- * @param codeSnippet - Snippet koda (opciono)
- * @returns Markdown formatiran inline komentar
+ * Za poznate issue titule vraća zamenu jedne linije (ako je moguće), inače undefined.
  */
-export function formatInlineComment(
+export function getReplacementLineForIssue(title: string, lineContent: string): string | undefined {
+  const line = lineContent;
+  if (/Insecure HTTP Connection/i.test(title)) {
+    return line.replace(/http:\/\//gi, 'https://');
+  }
+  return undefined;
+}
+
+/**
+ * Heuristic: da li suggestedFix izgleda kao jedan red koda (pa ga možemo koristiti za GitHub suggestion block).
+ */
+function looksLikeCodeLine(text: string): boolean {
+  if (!text || text.length > 300) return false;
+  const t = text.trim();
+  if (t.endsWith('.') && !t.endsWith(');')) return false; // rečenica
+  return /[=(\[;\{\}]/.test(t) || /^[\s\w\.\'\"\`\,\:\-\>\<\+\*\&\|]+\s*[;\)]?\s*$/.test(t);
+}
+
+/**
+ * Formatira inline komentar, opciono sa GitHub "suggestion" blokom (Commit suggestion dugme).
+ * Ako je prosleđen replacementLine, u body se dodaje ```suggestion\n...\n```.
+ *
+ * @param issue - Issue
+ * @param codeSnippet - Snippet koda (opciono)
+ * @param replacementLine - Tačan sadržaj linije koji zamenjuje trenutnu (za suggestion block)
+ */
+export function formatInlineCommentWithSuggestion(
   issue: CombinedIssue,
-  codeSnippet?: string
+  codeSnippet?: string,
+  replacementLine?: string
 ): string {
   const severityBadge = getSeverityBadge(issue.severity);
 
   let comment = `${severityBadge} **${issue.title}**\n\n`;
-  
   comment += `${issue.description}\n\n`;
 
   if (codeSnippet) {
     comment += `\`\`\`typescript\n${codeSnippet}\n\`\`\`\n\n`;
   }
 
-  if (issue.suggestedFix) {
+  const suggestionBody =
+    replacementLine ??
+    (issue as CombinedIssue & { suggestionCode?: string }).suggestionCode ??
+    (issue.suggestedFix && looksLikeCodeLine(issue.suggestedFix) ? issue.suggestedFix : undefined);
+
+  if (suggestionBody) {
+    comment += `\`\`\`suggestion\n${suggestionBody.replace(/\r/g, '')}\n\`\`\`\n\n`;
+  } else if (issue.suggestedFix) {
     comment += `### 💡 Suggested Fix\n\n`;
     comment += `${issue.suggestedFix}\n\n`;
   }
@@ -140,9 +179,31 @@ export function formatInlineComment(
   }
 
   comment += `\n---\n`;
-  comment += `*Detected by ${issue.source === 'security' ? 'Security Scanner' : 'AI Analysis'}*\n`;
+  const sourceLabel =
+    issue.source === 'security'
+      ? 'Security Scanner'
+      : issue.source === 'quality'
+        ? 'Quality Check'
+        : issue.source === 'iac'
+          ? 'IaC Check'
+          : 'AI Analysis';
+  comment += `*Detected by ${sourceLabel}*\n`;
 
   return comment;
+}
+
+/**
+ * Formatira inline komentar za specifičnu liniju koda (bez suggestion blocka).
+ *
+ * @param issue - Issue koji se komentariše
+ * @param codeSnippet - Snippet koda (opciono)
+ * @returns Markdown formatiran inline komentar
+ */
+export function formatInlineComment(
+  issue: CombinedIssue,
+  codeSnippet?: string
+): string {
+  return formatInlineCommentWithSuggestion(issue, codeSnippet, undefined);
 }
 
 /**

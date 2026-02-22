@@ -1,0 +1,11 @@
+{
+  "name": "neatcommit-cli",
+  "version": "1.0.0",
+  "description": "CLI to trigger NeatCommit analysis (CI or local)",
+  "bin": {
+    "neatcommit": "./bin/neatcommit.js"
+  },
+  "scripts": {
+    "analyze": "node bin/neatcommit.js"
+  }
+}

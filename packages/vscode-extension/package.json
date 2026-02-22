@@ -1,0 +1,28 @@
+{
+  "name": "neatcommit-vscode",
+  "displayName": "NeatCommit",
+  "description": "Show NeatCommit analysis results in VS Code (API-based)",
+  "version": "0.1.0",
+  "engines": { "vscode": "^1.74.0" },
+  "categories": ["Linters", "Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "NeatCommit",
+      "properties": {
+        "neatcommit.apiUrl": { "type": "string", "default": "https://api.neatcommit.com", "description": "NeatCommit API URL" },
+        "neatcommit.token": { "type": "string", "default": "", "description": "JWT for API (optional)" }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {}
+}

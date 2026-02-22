@@ -1,0 +1,13 @@
+name: NeatCommit
+on:
+  pull_request:
+    types: [opened, synchronize]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger NeatCommit
+        run: |
+          code=$(curl -s -o out.json -w "%{http_code}" -X POST "${{ secrets.NEATCOMMIT_API_URL }}/api/analyze/trigger" -H "Authorization: Bearer ${{ secrets.NEATCOMMIT_JWT }}" -H "Content-Type: application/json" -d "{\"owner\":\"${{ github.repository_owner }}\",\"repo\":\"${{ github.event.repository.name }}\",\"pullNumber\":${{ github.event.pull_request.number }}}")
+          cat out.json
+          [ "$code" = "202" ] || exit 1

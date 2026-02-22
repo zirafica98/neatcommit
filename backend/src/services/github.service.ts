@@ -295,6 +295,39 @@ export async function createReviewComment(
 }
 
 /**
+ * Postavlja status check na commit (za quality gate)
+ */
+export async function createCommitStatus(
+  installationId: number,
+  owner: string,
+  repo: string,
+  sha: string,
+  state: 'error' | 'failure' | 'pending' | 'success',
+  description?: string,
+  targetUrl?: string
+) {
+  try {
+    const octokit = await getInstallationOctokit(installationId);
+    if (!octokit.rest) throw new Error('Octokit instance does not have rest property');
+
+    await octokit.rest.repos.createCommitStatus({
+      owner,
+      repo,
+      sha,
+      state,
+      context: 'neatcommit/review',
+      description: description ?? (state === 'success' ? 'Quality gate passed' : 'Quality gate failed'),
+      target_url: targetUrl,
+    });
+
+    logger.debug('Commit status created', { owner, repo, sha, state });
+  } catch (error) {
+    logger.error('Failed to create commit status', { error });
+    throw error;
+  }
+}
+
+/**
  * Dobija listu repozitorijuma za instalaciju
  * 
  * @param installationId - GitHub installation ID

@@ -2,12 +2,27 @@ import { Worker, Job } from 'bullmq';
 import env from '../config/env';
 import { logger } from '../utils/logger';
 import { AnalyzePRJob } from '../types/jobs';
-import { getPullRequestFiles, getFileContent } from '../services/github.service';
+import {
+  getPullRequestFiles,
+  getFileContent,
+  createCommitStatus,
+} from '../services/github.service';
 import { analyzeFiles } from '../services/analysis.service';
 import { postAnalysisComments } from '../services/github-comment.service';
 import prisma from '../config/database';
 import { isLanguageSupported } from '../utils/language-detector';
-import { sendReviewCompletedNotification } from '../services/notification.service';
+import {
+  sendReviewCompletedNotification,
+  sendQualityGateFailedNotification,
+} from '../services/notification.service';
+import {
+  parseRepoConfig,
+  isPathIgnored,
+  filterIssuesByCategories,
+  applyRulesConfig,
+  computeQualityGatePassed,
+  RepoConfig,
+} from '../config/repo-config';
 
 logger.info('Creating analysis worker...');
 
@@ -31,20 +46,33 @@ export const analysisWorker = new Worker(
         installationId,
       });
 
+      // 0. Dohvati repo konfiguraciju (.neatcommit.yml)
+      let repoConfig: RepoConfig = parseRepoConfig(null);
+      try {
+        const configRaw = await getFileContent(
+          installationId,
+          owner,
+          repo,
+          '.neatcommit.yml',
+          sha
+        );
+        repoConfig = parseRepoConfig(configRaw);
+        logger.debug('Repo config loaded from .neatcommit.yml');
+      } catch {
+        // Nema fajla ili greška - koristi default
+      }
+
       // 1. Dohvati PR fajlove sa GitHub-a
       const prFiles = await getPullRequestFiles(installationId, owner, repo, pullNumber);
-      
+
       logger.debug('PR files retrieved', {
         fileCount: prFiles.length,
       });
 
-      // 2. Filtriraj samo podržane jezike (koristi Language Detector)
+      // 2. Filtriraj po ignore paths i podržane jezike
       const supportedFiles = prFiles.filter((file) => {
-        // Preskoči deleted fajlove
-        if (file.status === 'removed') {
-          return false;
-        }
-        // Proveri da li je jezik podržan
+        if (file.status === 'removed') return false;
+        if (isPathIgnored(file.filename, repoConfig)) return false;
         return isLanguageSupported(file.filename);
       });
 
@@ -105,7 +133,14 @@ export const analysisWorker = new Worker(
       }
 
       // 4. Analiziraj fajlove
-      const analysisResults = await analyzeFiles(validFiles);
+      let analysisResults = await analyzeFiles(validFiles);
+
+      // 4b. Filtriraj issue-e po kategorijama i primeni rules (disable / severityOverrides)
+      analysisResults = analysisResults.map((result) => {
+        let issues = filterIssuesByCategories(result.allIssues, repoConfig);
+        issues = applyRulesConfig(issues, repoConfig);
+        return { ...result, allIssues: issues };
+      });
 
       // 5. Sačuvaj rezultate u bazu
       const review = await prisma.review.findUnique({
@@ -122,6 +157,7 @@ export const analysisWorker = new Worker(
         const mediumCount = allIssues.filter((i) => i.severity === 'MEDIUM').length;
         const lowCount = allIssues.filter((i) => i.severity === 'LOW').length;
         const avgScore = analysisResults.reduce((sum, r) => sum + r.score, 0) / analysisResults.length;
+        const qualityGatePassed = computeQualityGatePassed(repoConfig, criticalCount, avgScore);
 
         // Ažuriraj review
         await prisma.review.update({
@@ -135,6 +171,7 @@ export const analysisWorker = new Worker(
             mediumIssues: mediumCount,
             lowIssues: lowCount,
             completedAt: new Date(),
+            qualityGatePassed,
           },
         });
 
@@ -185,6 +222,16 @@ export const analysisWorker = new Worker(
                 totalIssues: allIssues.length,
                 criticalIssues: criticalCount,
               });
+              if (!qualityGatePassed) {
+                await sendQualityGateFailedNotification(user.email, {
+                  repositoryName: repository.fullName,
+                  prTitle: review.githubPrTitle,
+                  prUrl: review.githubPrUrl,
+                  securityScore: Math.round(avgScore),
+                  criticalIssues: criticalCount,
+                  message: criticalCount > 0 ? 'Critical issues must be resolved before merge.' : 'Minimum score threshold not met.',
+                });
+              }
             }
           } catch (notificationError) {
             logger.error('Failed to send notification', {
@@ -195,8 +242,11 @@ export const analysisWorker = new Worker(
           }
         }
 
-        // 7. Postavi komentare na GitHub PR
+        // 7. Postavi komentare na GitHub PR i status check
         try {
+          const fileContentByPath = Object.fromEntries(
+            validFiles.map((f) => [f.filename, f.code])
+          );
           const commentResult = await postAnalysisComments(
             installationId,
             owner,
@@ -204,7 +254,8 @@ export const analysisWorker = new Worker(
             pullNumber,
             sha,
             analysisResults,
-            review.id
+            review.id,
+            { qualityGatePassed, fileContentByPath }
           );
 
           logger.info('Comments posted to PR', {
@@ -212,6 +263,22 @@ export const analysisWorker = new Worker(
             inlineComments: commentResult.inlineCommentsCount,
             total: commentResult.totalComments,
           });
+
+          // 8. Postavi GitHub commit status (quality gate)
+          try {
+            await createCommitStatus(
+              installationId,
+              owner,
+              repo,
+              sha,
+              qualityGatePassed ? 'success' : 'failure',
+              qualityGatePassed ? 'Quality gate passed' : 'Quality gate failed'
+            );
+          } catch (statusError) {
+            logger.warn('Failed to create commit status', {
+              error: statusError instanceof Error ? statusError.message : String(statusError),
+            });
+          }
         } catch (commentError) {
           logger.error('Failed to post comments to PR', {
             error: commentError instanceof Error ? commentError.message : String(commentError),
