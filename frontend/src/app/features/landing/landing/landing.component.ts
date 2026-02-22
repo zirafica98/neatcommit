@@ -20,6 +20,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   plans: Plan[] = [];
   plansLoading = true;
   plansError: string | null = null;
+  /** Otvoren mobilni meni (hamburger). */
+  mobileMenuOpen = false;
   private faqScriptEl: HTMLScriptElement | null = null;
 
   constructor(
@@ -127,5 +129,9 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   toggleFaq(item: { open: boolean }): void {
     item.open = !item.open;
+  }
+
+  closeMobileMenu(): void {
+    this.mobileMenuOpen = false;
   }
 }

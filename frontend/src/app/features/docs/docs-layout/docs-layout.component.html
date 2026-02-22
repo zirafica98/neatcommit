@@ -1,6 +1,10 @@
-<div class="docs-layout">
+<div class="docs-layout" [class.mobile-sidebar-open]="mobileSidebarOpen">
+  <button type="button" class="docs-mobile-menu" aria-label="Open documentation menu" [attr.aria-expanded]="mobileSidebarOpen" (click)="mobileSidebarOpen = !mobileSidebarOpen">
+    <mat-icon aria-hidden="true">{{ mobileSidebarOpen ? 'close' : 'menu' }}</mat-icon>
+  </button>
+  <div class="docs-sidebar-overlay" (click)="closeMobileSidebar()" role="button" tabindex="-1" aria-label="Close menu"></div>
   <aside class="docs-sidebar" aria-label="Documentation navigation">
-    <a routerLink="/" class="docs-back">
+    <a routerLink="/" class="docs-back" (click)="closeMobileSidebar()">
       <mat-icon aria-hidden="true">arrow_back</mat-icon>
       Back to site
     </a>
@@ -13,6 +17,7 @@
         routerLinkActive="active"
         [routerLinkActiveOptions]="{ exact: true }"
         class="docs-nav-link"
+        (click)="closeMobileSidebar()"
       >
         <mat-icon>{{ item.icon }}</mat-icon>
         <span>{{ item.label }}</span>
@@ -24,6 +29,7 @@
           [routerLink]="['/docs/api']"
           [fragment]="section.fragment"
           class="docs-nav-link docs-nav-sublink"
+          (click)="closeMobileSidebar()"
         >
           <span>{{ section.label }}</span>
         </a>

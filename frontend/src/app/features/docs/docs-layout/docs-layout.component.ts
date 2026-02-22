@@ -42,6 +42,12 @@ export class DocsLayoutComponent implements OnInit {
     return this.router.url.startsWith('/docs/api');
   }
 
+  mobileSidebarOpen = false;
+
+  closeMobileSidebar(): void {
+    this.mobileSidebarOpen = false;
+  }
+
   constructor(
     public router: Router,
     private seo: SeoService

@@ -4,6 +4,42 @@
   background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
   color: #e2e8f0;
   font-family: 'Inter', 'Roboto', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+.docs-mobile-menu {
+  display: none;
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 102;
+  width: 44px;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+.docs-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s, visibility 0.2s;
 }
 
 .docs-sidebar {
@@ -98,6 +134,58 @@
   min-width: 0;
   padding: 2rem 2.5rem 4rem;
   max-width: 900px;
+}
+
+@media (max-width: 768px) {
+  .docs-mobile-menu {
+    display: flex;
+  }
+
+  .docs-sidebar-overlay {
+    display: block;
+
+    .docs-layout.mobile-sidebar-open & {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+
+  .docs-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 101;
+    width: 260px;
+    max-width: 85vw;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    background: #0f0f1a;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+
+    .docs-layout.mobile-sidebar-open & {
+      transform: translateX(0);
+    }
+  }
+
+  .docs-main {
+    padding: 1rem 1rem 3rem;
+    padding-top: 4rem;
+  }
+
+  :host ::ng-deep .doc-page h1 {
+    font-size: 1.5rem;
+  }
+
+  :host ::ng-deep .doc-page h2 {
+    font-size: 1.2rem;
+  }
+
+  :host ::ng-deep .doc-page pre,
+  :host ::ng-deep .doc-page table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 :host ::ng-deep .doc-page h1 {

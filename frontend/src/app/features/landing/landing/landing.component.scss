@@ -3,6 +3,7 @@
   background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
   color: #e2e8f0;
   font-family: 'Inter', 'Roboto', system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
 .landing-header {
@@ -37,6 +38,30 @@
     }
   }
 
+  .menu-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: none;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    color: #e2e8f0;
+    cursor: pointer;
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .nav-overlay {
+    display: contents;
+  }
+
   .nav {
     display: flex;
     align-items: center;
@@ -63,18 +88,61 @@
   }
 
   @media (max-width: 768px) {
-    padding: 1rem;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+
+    .menu-toggle {
+      display: flex;
+    }
+
+    .nav-overlay {
+      display: block;
+      position: fixed;
+      inset: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 15, 26, 0.95);
+      backdrop-filter: blur(8px);
+      z-index: 99;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s, visibility 0.2s;
+
+      &.open {
+        opacity: 1;
+        visibility: visible;
+      }
+    }
 
     .nav {
-      gap: 0.75rem;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0;
+      padding: 4rem 1.5rem 2rem;
+      max-height: 100vh;
+      overflow-y: auto;
 
-      a:not(.btn-start) {
-        font-size: 0.875rem;
+      a {
+        padding: 0.875rem 0;
+        font-size: 1.1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+      }
+
+      .btn-start {
+        margin-top: 0.5rem;
+        justify-content: center;
+        min-height: 48px;
       }
     }
   }
+}
+
+.landing.menu-open {
+  overflow: hidden;
 }
 
 .hero {
@@ -91,6 +159,11 @@
     grid-template-columns: 1fr;
     text-align: center;
     padding: 3rem 1.5rem 4rem;
+    min-height: auto;
+  }
+
+  @media (max-width: 480px) {
+    padding: 2rem 1rem 3rem;
   }
 }
 
@@ -121,6 +194,10 @@
     @media (max-width: 900px) {
       margin-left: auto;
       margin-right: auto;
+    }
+
+    @media (max-width: 480px) {
+      font-size: 1rem;
     }
   }
 
@@ -222,6 +299,10 @@
   padding: 5rem 2rem;
   max-width: 1200px;
   margin: 0 auto;
+
+  @media (max-width: 600px) {
+    padding: 3rem 1rem;
+  }
 }
 
 .section-title {
@@ -238,6 +319,11 @@
   color: #94a3b8;
   font-size: 1.1rem;
   margin-bottom: 3rem;
+
+  @media (max-width: 600px) {
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
 }
 
 .features-grid {
@@ -297,6 +383,11 @@
   max-width: 1100px;
   margin: 0 auto;
 
+  @media (max-width: 600px) {
+    padding: 3rem 1rem 4rem;
+  }
+}
+
   .pricing-loading,
   .pricing-error {
     max-width: 400px;
@@ -332,6 +423,10 @@
     grid-template-columns: 1fr;
     max-width: 380px;
     margin: 0 auto;
+  }
+
+  @media (max-width: 420px) {
+    padding: 0 0.5rem;
   }
 }
 
@@ -463,6 +558,10 @@
   padding: 4rem 2rem 5rem;
   max-width: 720px;
   margin: 0 auto;
+
+  @media (max-width: 600px) {
+    padding: 3rem 1rem 4rem;
+  }
 }
 
 .doc-content {
@@ -479,6 +578,8 @@
 .doc-actions {
   display: flex;
   justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 
   .doc-btn mat-icon {
     margin-right: 0.4rem;
@@ -494,6 +595,10 @@
   padding: 4rem 2rem 5rem;
   max-width: 720px;
   margin: 0 auto;
+
+  @media (max-width: 600px) {
+    padding: 3rem 1rem 4rem;
+  }
 }
 
 .faq-list {
@@ -521,6 +626,7 @@
   justify-content: space-between;
   gap: 1rem;
   padding: 1rem 1.25rem;
+  min-height: 48px;
   background: none;
   border: none;
   color: #e2e8f0;
@@ -529,6 +635,11 @@
   text-align: left;
   cursor: pointer;
   font-family: inherit;
+
+  @media (max-width: 480px) {
+    padding: 0.875rem 1rem;
+    font-size: 0.95rem;
+  }
 
   mat-icon {
     font-size: 24px;
@@ -563,18 +674,31 @@
   padding: 4rem 2rem 5rem;
   max-width: 900px;
   margin: 0 auto;
+
+  @media (max-width: 600px) {
+    padding: 3rem 1rem 4rem;
+  }
 }
 
 .steps {
   display: grid;
   gap: 2rem;
   margin-bottom: 3rem;
+
+  @media (max-width: 480px) {
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
 }
 
 .step {
   display: flex;
   gap: 1.5rem;
   align-items: flex-start;
+
+  @media (max-width: 480px) {
+    gap: 1rem;
+  }
 
   .step-num {
     width: 44px;
@@ -633,6 +757,10 @@
   background: rgba(102, 126, 234, 0.08);
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 
+  @media (max-width: 600px) {
+    padding: 3rem 1rem;
+  }
+
   h2 {
     font-size: clamp(1.5rem, 3vw, 2rem);
     font-weight: 700;
@@ -649,6 +777,10 @@
 .landing-footer {
   padding: 2rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+  @media (max-width: 600px) {
+    padding: 1.5rem 1rem;
+  }
 }
 
 .footer-inner {
@@ -659,6 +791,11 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    text-align: center;
+  }
 }
 
 .logo-small {

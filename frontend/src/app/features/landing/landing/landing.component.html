@@ -1,20 +1,25 @@
-<div class="landing">
+<div class="landing" [class.menu-open]="mobileMenuOpen">
   <header class="landing-header" role="banner">
     <a routerLink="/" class="logo" aria-label="NeatCommit home">
       <mat-icon aria-hidden="true">security</mat-icon>
       <span>NeatCommit</span>
     </a>
-    <nav class="nav" aria-label="Main navigation">
-      <a href="#features">Features</a>
-      <a href="#how-it-works">How it works</a>
-      <a href="#pricing">Pricing</a>
-      <a routerLink="/docs">Documentation</a>
-      <a routerLink="/news">News</a>
-      <a href="#faq">FAQ</a>
-      <a routerLink="/auth/login" class="btn-start" mat-flat-button color="primary">
-        Get started
-      </a>
-    </nav>
+    <button type="button" class="menu-toggle" aria-label="Toggle menu" [attr.aria-expanded]="mobileMenuOpen" (click)="mobileMenuOpen = !mobileMenuOpen">
+      <mat-icon aria-hidden="true">{{ mobileMenuOpen ? 'close' : 'menu' }}</mat-icon>
+    </button>
+    <div class="nav-overlay" [class.open]="mobileMenuOpen" (click)="closeMobileMenu()">
+      <nav class="nav" aria-label="Main navigation" (click)="$event.stopPropagation()">
+        <a href="#features" (click)="closeMobileMenu()">Features</a>
+        <a href="#how-it-works" (click)="closeMobileMenu()">How it works</a>
+        <a href="#pricing" (click)="closeMobileMenu()">Pricing</a>
+        <a routerLink="/docs" (click)="closeMobileMenu()">Documentation</a>
+        <a routerLink="/news" (click)="closeMobileMenu()">News</a>
+        <a href="#faq" (click)="closeMobileMenu()">FAQ</a>
+        <a routerLink="/auth/login" class="btn-start" mat-flat-button color="primary" (click)="closeMobileMenu()">
+          Get started
+        </a>
+      </nav>
+    </div>
   </header>
 
   <main id="main-content">
