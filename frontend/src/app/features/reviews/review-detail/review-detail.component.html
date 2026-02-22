@@ -39,6 +39,9 @@
         <span class="score-badge" [style.color]="getScoreColor(review.securityScore)">
           {{ review.securityScore }}/100
         </span>
+        <span *ngIf="review.status === 'completed' && review.qualityGatePassed !== undefined" class="gate-badge" [class.gate-passed]="review.qualityGatePassed" [class.gate-failed]="review.qualityGatePassed === false">
+          {{ review.qualityGatePassed ? 'Quality gate: Passed' : 'Quality gate: Failed' }}
+        </span>
         <a mat-raised-button color="primary" [attr.href]="review.githubPrUrl" target="_blank">
           <mat-icon>open_in_new</mat-icon>
           View PR

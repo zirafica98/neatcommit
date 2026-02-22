@@ -12,7 +12,7 @@
       "title": "NeatCommit",
       "properties": {
         "neatcommit.apiUrl": { "type": "string", "default": "https://api.neatcommit.com", "description": "NeatCommit API URL" },
-        "neatcommit.token": { "type": "string", "default": "", "description": "JWT for API (optional)" }
+        "neatcommit.token": { "type": "string", "default": "", "description": "JWT for API. Get it from the NeatCommit dashboard (user settings / API token)." }
       }
     }
   },

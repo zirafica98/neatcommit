@@ -40,6 +40,7 @@ export interface Review {
   githubSha: string;
   status: 'pending' | 'completed' | 'failed';
   securityScore: number;
+  qualityGatePassed?: boolean | null;
   totalIssues: number;
   criticalIssues: number;
   highIssues: number;

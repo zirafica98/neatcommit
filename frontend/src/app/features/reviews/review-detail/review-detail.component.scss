@@ -108,6 +108,27 @@
         padding: 10px 16px;
       }
     }
+
+    .gate-badge {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+
+      &.gate-passed {
+        background: rgba(76, 175, 80, 0.2);
+        color: #2e7d32;
+        border: 1px solid rgba(76, 175, 80, 0.4);
+      }
+
+      &.gate-failed {
+        background: rgba(244, 67, 54, 0.2);
+        color: #c62828;
+        border: 1px solid rgba(244, 67, 54, 0.4);
+      }
+    }
   }
 }
 
