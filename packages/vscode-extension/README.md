@@ -9,9 +9,11 @@ Prikazuje rezultate NeatCommit analize (issue-e) u VS Code Problems panelu i kao
 
 ### Kako dobiti JWT (token)
 
-- Uloguj se na NeatCommit dashboard (web aplikacija).
-- U podešavanjima naloga / profilu potraži opciju za **API token** ili **Generate JWT** (zavisi od implementacije frontenda). Kopiraj token.
-- U VS Code: **File → Preferences → Settings**, potraži "NeatCommit", u polje **NeatCommit: Token** nalepi token. Možeš i u `settings.json`: `"neatcommit.token": "eyJ..."`.
+1. Uloguj se na NeatCommit dashboard i otvori **Settings** (u meniju aplikacije).
+2. U sekciji **API Token** klikni **Copy API token** – token se kopira u clipboard.
+3. U VS Code: **File → Preferences → Settings**, potraži "NeatCommit", u polje **NeatCommit: Token** nalepi token. Ili u `settings.json`: `"neatcommit.token": "eyJ..."`.
+
+Token je tvoj trenutni sesijski JWT i ističe kada se odjaviš; tada ponovo kopiraj token iz Settings.
 
 ## Korišćenje
 

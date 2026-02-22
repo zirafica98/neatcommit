@@ -12,6 +12,7 @@ import { SubscriptionService, SubscriptionInfo } from '../../../core/services/su
 import { User } from '../../../shared/models';
 import { RouterModule } from '@angular/router';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-settings',
@@ -23,6 +24,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     MatButtonModule,
     MatSlideToggleModule,
     MatProgressBarModule,
+    MatSnackBarModule,
     RouterModule,
   ],
   templateUrl: './settings.component.html',
@@ -46,7 +48,8 @@ export class SettingsComponent implements OnInit {
     private themeService: ThemeService,
     private reviewService: ReviewService,
     private repositoryService: RepositoryService,
-    private subscriptionService: SubscriptionService
+    private subscriptionService: SubscriptionService,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -150,6 +153,18 @@ export class SettingsComponent implements OnInit {
     if (limit === null) return 0; // Unlimited
     if (limit === 0) return 0;
     return Math.min((used / limit) * 100, 100);
+  }
+
+  copyApiToken(): void {
+    const token = this.authService.getToken();
+    if (!token) {
+      this.snackBar.open('You are not logged in. Please sign in again.', 'Close', { duration: 4000 });
+      return;
+    }
+    navigator.clipboard.writeText(token).then(
+      () => this.snackBar.open('API token copied to clipboard. Use it in VS Code (neatcommit.token) or CI (NEATCOMMIT_TOKEN).', 'Close', { duration: 5000 }),
+      () => this.snackBar.open('Failed to copy. Please copy the token manually from your browser storage.', 'Close', { duration: 5000 })
+    );
   }
 
   disconnectAccount(): void {

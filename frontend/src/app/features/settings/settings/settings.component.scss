@@ -278,6 +278,14 @@
     color: #666;
     font-size: 14px;
     line-height: 1.6;
+
+    code {
+      font-family: ui-monospace, monospace;
+      font-size: 13px;
+      padding: 2px 6px;
+      background: rgba(0, 0, 0, 0.06);
+      border-radius: 4px;
+    }
   }
   
   .card-actions {
