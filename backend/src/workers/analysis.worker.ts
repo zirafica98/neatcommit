@@ -1,12 +1,14 @@
 import { Worker, Job } from 'bullmq';
 import env from '../config/env';
 import { logger } from '../utils/logger';
-import { AnalyzePRJob } from '../types/jobs';
+import { AnalyzePRJob, AnalyzeBranchJob } from '../types/jobs';
 import {
   getPullRequestFiles,
+  getCompareFiles,
   getFileContent,
   createCommitStatus,
 } from '../services/github.service';
+import type { PRDiff } from '../services/github.service';
 import { analyzeFiles } from '../services/analysis.service';
 import { postAnalysisComments } from '../services/github-comment.service';
 import prisma from '../config/database';
@@ -28,25 +30,28 @@ logger.info('Creating analysis worker...');
 
 export const analysisWorker = new Worker(
   'code-analysis',
-  async (job: Job<AnalyzePRJob>) => {
-    const { owner, repo, pullNumber } = job.data;
+  async (job: Job<AnalyzePRJob | AnalyzeBranchJob>) => {
+    const isBranchJob = job.name === 'analyze-branch';
+    const { owner, repo, installationId, sha } = job.data;
+    const pullNumber = !isBranchJob ? (job.data as AnalyzePRJob).pullNumber : 0;
+    const reviewLookupId = isBranchJob ? (job.data as AnalyzeBranchJob).branchId : (job.data as AnalyzePRJob).prId;
 
-    logger.info(`Processing analysis job for PR #${pullNumber} in ${owner}/${repo}`, {
-      jobId: job.id,
-      attempt: job.attemptsMade + 1,
-    });
+    logger.info(
+      isBranchJob
+        ? `Processing branch analysis for ${(job.data as AnalyzeBranchJob).ref} in ${owner}/${repo}`
+        : `Processing analysis job for PR #${pullNumber} in ${owner}/${repo}`,
+      { jobId: job.id, attempt: job.attemptsMade + 1 }
+    );
 
     try {
-      const { installationId, sha } = job.data;
-
-      logger.info('Starting PR analysis', {
+      logger.info('Starting analysis', {
         owner,
         repo,
-        pullNumber,
+        ...(isBranchJob ? { ref: (job.data as AnalyzeBranchJob).ref } : { pullNumber }),
         installationId,
       });
 
-      // 0. Dohvati repo konfiguraciju (.neatcommit.yml)
+      // 0. Repo config (.neatcommit.yml)
       let repoConfig: RepoConfig = parseRepoConfig(null);
       try {
         const configRaw = await getFileContent(
@@ -59,11 +64,18 @@ export const analysisWorker = new Worker(
         repoConfig = parseRepoConfig(configRaw);
         logger.debug('Repo config loaded from .neatcommit.yml');
       } catch {
-        // Nema fajla ili greška - koristi default
+        // No file or error – use default
       }
 
-      // 1. Dohvati PR fajlove sa GitHub-a
-      const prFiles = await getPullRequestFiles(installationId, owner, repo, pullNumber);
+      // 1. Get file list (PR or branch diff)
+      let prFiles: PRDiff[];
+      if (isBranchJob) {
+        const { ref, baseRef } = job.data as AnalyzeBranchJob;
+        const basehead = `${baseRef}...${ref}`;
+        prFiles = await getCompareFiles(installationId, owner, repo, basehead);
+      } else {
+        prFiles = await getPullRequestFiles(installationId, owner, repo, (job.data as AnalyzePRJob).pullNumber);
+      }
 
       logger.debug('PR files retrieved', {
         fileCount: prFiles.length,
@@ -84,6 +96,25 @@ export const analysisWorker = new Worker(
             return ext;
           }),
         });
+        const emptyReview = await prisma.review.findUnique({
+          where: { githubPrId: reviewLookupId },
+        });
+        if (emptyReview) {
+          await prisma.review.update({
+            where: { id: emptyReview.id },
+            data: {
+              status: 'completed',
+              securityScore: 100,
+              totalIssues: 0,
+              criticalIssues: 0,
+              highIssues: 0,
+              mediumIssues: 0,
+              lowIssues: 0,
+              completedAt: new Date(),
+              qualityGatePassed: true,
+            },
+          });
+        }
         return { success: true, analyzedFiles: 0 };
       }
 
@@ -142,10 +173,10 @@ export const analysisWorker = new Worker(
         return { ...result, allIssues: issues };
       });
 
-      // 5. Sačuvaj rezultate u bazu
+      // 5. Save results to DB
       const review = await prisma.review.findUnique({
         where: {
-          githubPrId: job.data.prId,
+          githubPrId: reviewLookupId,
         },
       });
 
@@ -242,55 +273,56 @@ export const analysisWorker = new Worker(
           }
         }
 
-        // 7. Postavi komentare na GitHub PR i status check
-        try {
-          const fileContentByPath = Object.fromEntries(
-            validFiles.map((f) => [f.filename, f.code])
-          );
-          const commentResult = await postAnalysisComments(
-            installationId,
-            owner,
-            repo,
-            pullNumber,
-            sha,
-            analysisResults,
-            review.id,
-            { qualityGatePassed, fileContentByPath }
-          );
-
-          logger.info('Comments posted to PR', {
-            summaryComment: commentResult.summaryCommentId ? 1 : 0,
-            inlineComments: commentResult.inlineCommentsCount,
-            total: commentResult.totalComments,
-          });
-
-          // 8. Postavi GitHub commit status (quality gate)
+        // 7. For PR jobs: post comments and commit status. For branch jobs: commit status only.
+        if (!isBranchJob && pullNumber) {
           try {
-            await createCommitStatus(
+            const fileContentByPath = Object.fromEntries(
+              validFiles.map((f) => [f.filename, f.code])
+            );
+            const commentResult = await postAnalysisComments(
               installationId,
               owner,
               repo,
+              pullNumber,
               sha,
-              qualityGatePassed ? 'success' : 'failure',
-              qualityGatePassed ? 'Quality gate passed' : 'Quality gate failed'
+              analysisResults,
+              review.id,
+              { qualityGatePassed, fileContentByPath }
             );
-          } catch (statusError) {
-            logger.warn('Failed to create commit status', {
-              error: statusError instanceof Error ? statusError.message : String(statusError),
+            logger.info('Comments posted to PR', {
+              summaryComment: commentResult.summaryCommentId ? 1 : 0,
+              inlineComments: commentResult.inlineCommentsCount,
+              total: commentResult.totalComments,
+            });
+          } catch (commentError) {
+            logger.error('Failed to post comments to PR', {
+              error: commentError instanceof Error ? commentError.message : String(commentError),
             });
           }
-        } catch (commentError) {
-          logger.error('Failed to post comments to PR', {
-            error: commentError instanceof Error ? commentError.message : String(commentError),
+        }
+        // 8. Set GitHub commit status (quality gate) for both PR and branch
+        try {
+          await createCommitStatus(
+            installationId,
+            owner,
+            repo,
+            sha,
+            qualityGatePassed ? 'success' : 'failure',
+            qualityGatePassed ? 'Quality gate passed' : 'Quality gate failed'
+          );
+        } catch (statusError) {
+          logger.warn('Failed to create commit status', {
+            error: statusError instanceof Error ? statusError.message : String(statusError),
           });
-          // Ne bacaj grešku - analiza je završena, komentari su opcioni
         }
       }
 
-      logger.info(`Analysis job completed for PR #${pullNumber}`, {
-        jobId: job.id,
-        analyzedFiles: analysisResults.length,
-      });
+      logger.info(
+        isBranchJob
+          ? `Branch analysis completed for ${(job.data as AnalyzeBranchJob).ref}`
+          : `Analysis job completed for PR #${pullNumber}`,
+        { jobId: job.id, analyzedFiles: analysisResults.length }
+      );
 
       return {
         success: true,
@@ -298,14 +330,13 @@ export const analysisWorker = new Worker(
         totalIssues: analysisResults.reduce((sum, r) => sum + r.allIssues.length, 0),
       };
     } catch (error) {
-      logger.error(`Analysis job failed for PR #${pullNumber}:`, error);
-      
-      // Ažuriraj review status na failed
+      logger.error(
+        isBranchJob ? 'Branch analysis job failed' : `Analysis job failed for PR #${pullNumber}`,
+        error
+      );
       try {
         const review = await prisma.review.findUnique({
-          where: {
-            githubPrId: job.data.prId,
-          },
+          where: { githubPrId: reviewLookupId },
         });
 
         if (review) {

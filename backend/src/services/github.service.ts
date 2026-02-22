@@ -180,6 +180,70 @@ export async function getFileContent(
 }
 
 /**
+ * Get default branch name for a repo (e.g. "main")
+ */
+export async function getRepoDefaultBranch(
+  installationId: number,
+  owner: string,
+  repo: string
+): Promise<string> {
+  const octokit = await getInstallationOctokit(installationId);
+  if (!octokit?.rest) throw new Error('Octokit instance invalid');
+  const { data } = await octokit.rest.repos.get({ owner, repo });
+  return data.default_branch || 'main';
+}
+
+/**
+ * Get list of files changed between base and head refs (e.g. main...feature).
+ * Same shape as PR diff for reuse in analysis worker.
+ */
+export async function getCompareFiles(
+  installationId: number,
+  owner: string,
+  repo: string,
+  basehead: string
+): Promise<PRDiff[]> {
+  try {
+    const octokit = await getInstallationOctokit(installationId);
+    if (!octokit?.rest) throw new Error('Octokit instance invalid');
+    const { data } = await (octokit as any).rest.repos.compareCommitsWithBasehead({
+      owner,
+      repo,
+      basehead,
+    });
+    const files = (data.files || []).map((file: any) => ({
+      filename: file.filename,
+      additions: file.additions ?? 0,
+      deletions: file.deletions ?? 0,
+      changes: file.changes ?? 0,
+      patch: file.patch || '',
+      status: (file.status === 'removed' ? 'removed' : file.status === 'added' ? 'added' : file.status === 'renamed' ? 'renamed' : 'modified') as PRDiff['status'],
+    }));
+    logger.debug('Compare files retrieved', { owner, repo, basehead, fileCount: files.length });
+    return files;
+  } catch (error) {
+    logger.error('Failed to get compare files:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get commit SHA for a ref (branch name or tag)
+ */
+export async function getRefSha(
+  installationId: number,
+  owner: string,
+  repo: string,
+  ref: string
+): Promise<string> {
+  const octokit = await getInstallationOctokit(installationId);
+  if (!octokit?.rest) throw new Error('Octokit instance invalid');
+  const normalizedRef = ref.startsWith('heads/') ? ref : `heads/${ref}`;
+  const { data } = await octokit.rest.git.getRef({ owner, repo, ref: normalizedRef });
+  return (data.object as { sha: string }).sha;
+}
+
+/**
  * Postavlja komentar na PR
  * 
  * @param installationId - GitHub installation ID

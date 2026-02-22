@@ -1,0 +1,8 @@
+{
+  "name": "elementer",
+  "private": true,
+  "description": "Elementer monorepo – frontend, backend, VS Code extension",
+  "scripts": {
+    "package:extension": "cd packages/vscode-extension && npm install && npm run package"
+  }
+}

@@ -8,3 +8,13 @@ export interface AnalyzePRJob {
   prUrl: string;
   prTitle: string;
 }
+
+export interface AnalyzeBranchJob {
+  installationId: number;
+  owner: string;
+  repo: string;
+  ref: string;
+  baseRef: string;
+  sha: string;
+  branchId: string;
+}

@@ -213,12 +213,13 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
 
     const installationIds = userInstallations.map((inst) => inst.id);
 
-    // Filtriraj reviews samo za installations koje pripadaju ovom korisniku
+    // Only PR reviews in the list (branch analyses are extension-only, excluded from dashboard)
     const reviews = await prisma.review.findMany({
       where: {
         installationId: {
           in: installationIds,
         },
+        githubPrId: { not: { startsWith: 'branch:' } },
       },
       take: 20,
       orderBy: { createdAt: 'desc' },

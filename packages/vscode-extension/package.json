@@ -8,6 +8,10 @@
   "activationEvents": ["onStartupFinished"],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      { "command": "neatcommit.refresh", "title": "NeatCommit: Load last review" },
+      { "command": "neatcommit.analyzeBranch", "title": "NeatCommit: Analyze current branch" }
+    ],
     "configuration": {
       "title": "NeatCommit",
       "properties": {
@@ -18,10 +22,13 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "package": "npm run compile && vsce package --no-dependencies"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
     "@types/vscode": "^1.74.0",
+    "@vscode/vsce": "^3.0.0",
     "typescript": "^5.0.0"
   },
   "dependencies": {}

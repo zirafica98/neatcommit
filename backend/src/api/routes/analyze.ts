@@ -5,14 +5,16 @@
  * Body: { owner: string, repo: string, pullNumber: number }
  * Auth: Bearer JWT (user must have access to the repo's installation)
  *
- * Enqueues the same analysis job as the webhook. Used by GitHub Actions or other CI.
+ * POST /api/analyze/trigger-branch
+ * Body: { owner: string, repo: string, ref: string }  (ref = branch name, e.g. "main" or "feature/xyz")
+ * Runs analysis on current branch vs default branch (no PR required). For VS Code "analyze while coding".
  */
 
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../../config/database';
 import { analysisQueue } from '../../config/queue';
-import { getPullRequest } from '../../services/github.service';
+import { getPullRequest, getRepoDefaultBranch, getRefSha } from '../../services/github.service';
 import { verifyAccessToken } from '../../services/auth.service';
 import { logger } from '../../utils/logger';
 
@@ -22,6 +24,12 @@ const triggerBodySchema = z.object({
   owner: z.string().min(1).max(200),
   repo: z.string().min(1).max(200),
   pullNumber: z.number().int().positive(),
+});
+
+const triggerBranchBodySchema = z.object({
+  owner: z.string().min(1).max(200),
+  repo: z.string().min(1).max(200),
+  ref: z.string().min(1).max(200),
 });
 
 router.post('/trigger', async (req: Request, res: Response) => {
@@ -118,6 +126,102 @@ router.post('/trigger', async (req: Request, res: Response) => {
     });
     return res.status(500).json({
       error: 'Failed to trigger analysis',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+router.post('/trigger-branch', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+    const token = authHeader.substring(7);
+    const payload = verifyAccessToken(token);
+    if (!payload?.userId) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    const userId = payload.userId;
+
+    const parsed = triggerBranchBodySchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid body', details: parsed.error.flatten() });
+    }
+    const { owner, repo, ref } = parsed.data;
+    const fullName = `${owner}/${repo}`;
+
+    const repository = await prisma.repository.findFirst({
+      where: { fullName, enabled: true },
+      include: { installation: true },
+    });
+    if (!repository) {
+      return res.status(404).json({ error: 'Repository not found or not enabled', fullName });
+    }
+
+    const inst = repository.installation;
+    if (!inst) {
+      return res.status(500).json({ error: 'Installation not found' });
+    }
+    if (inst.userId !== userId) {
+      return res.status(403).json({ error: 'You do not have access to this repository' });
+    }
+
+    const defaultBranch = await getRepoDefaultBranch(inst.installationId, owner, repo);
+    const sha = await getRefSha(inst.installationId, owner, repo, ref);
+    const branchId = `branch:${ref}:${sha}`;
+
+    const review = await prisma.review.upsert({
+      where: { githubPrId: branchId },
+      create: {
+        installationId: inst.id,
+        repositoryId: repository.id,
+        userId: inst.userId ?? undefined,
+        githubPrNumber: 0,
+        githubPrId: branchId,
+        githubPrUrl: `https://github.com/${owner}/${repo}/tree/${ref}`,
+        githubPrTitle: `Branch: ${ref}`,
+        githubPrState: 'open',
+        githubSha: sha,
+        status: 'pending',
+      },
+      update: {
+        githubSha: sha,
+        status: 'pending',
+        updatedAt: new Date(),
+      },
+    });
+
+    const job = await analysisQueue.add('analyze-branch', {
+      installationId: inst.installationId,
+      owner,
+      repo,
+      ref,
+      baseRef: defaultBranch,
+      sha,
+      branchId,
+    });
+
+    logger.info('Branch analysis triggered via API', {
+      userId,
+      fullName,
+      ref,
+      jobId: job.id,
+      reviewId: review.id,
+    });
+
+    return res.status(202).json({
+      jobId: job.id,
+      reviewId: review.id,
+      status: 'queued',
+      message: 'Branch analysis queued. Poll GET /api/reviews/:id for results.',
+    });
+  } catch (error) {
+    logger.error('Analyze trigger-branch failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return res.status(500).json({
+      error: 'Failed to trigger branch analysis',
       message: error instanceof Error ? error.message : String(error),
     });
   }
