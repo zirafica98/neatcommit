@@ -30,11 +30,17 @@ export interface RepoConfigRules {
   severityOverrides?: Record<string, string>;
 }
 
+export interface RepoConfigDuplication {
+  minLines?: number;        // minimum block size (default 8)
+  ignorePatterns?: string[]; // globs for file paths to skip duplication check
+}
+
 export interface RepoConfig {
   categories?: RepoConfigCategories;
   qualityGate?: RepoConfigQualityGate;
   ignore?: RepoConfigIgnore;
   rules?: RepoConfigRules;
+  duplication?: RepoConfigDuplication;
 }
 
 const DEFAULT_CONFIG: RepoConfig = {
@@ -51,6 +57,10 @@ const DEFAULT_CONFIG: RepoConfig = {
   },
   ignore: {
     paths: [],
+  },
+  duplication: {
+    minLines: 8,
+    ignorePatterns: [],
   },
 };
 
@@ -73,6 +83,7 @@ export function parseRepoConfig(rawYaml: string | null): RepoConfig {
       qualityGate: mergeQualityGate((parsed as any).qualityGate),
       ignore: mergeIgnore((parsed as any).ignore),
       rules: mergeRules((parsed as any).rules),
+      duplication: mergeDuplication((parsed as any).duplication),
     };
 
     return config;
@@ -113,6 +124,19 @@ function mergeIgnore(ignore: unknown): RepoConfigIgnore {
     out!.paths = i.paths.filter((p): p is string => typeof p === 'string');
   }
   return out as RepoConfigIgnore;
+}
+
+function mergeDuplication(duplication: unknown): RepoConfigDuplication {
+  const out = { ...DEFAULT_CONFIG.duplication };
+  if (!duplication || typeof duplication !== 'object') return out as RepoConfigDuplication;
+  const d = duplication as Record<string, unknown>;
+  if (typeof d.minLines === 'number' && d.minLines >= 3 && d.minLines <= 20) {
+    out!.minLines = d.minLines;
+  }
+  if (Array.isArray(d.ignorePatterns)) {
+    out!.ignorePatterns = d.ignorePatterns.filter((p): p is string => typeof p === 'string');
+  }
+  return out as RepoConfigDuplication;
 }
 
 function mergeRules(rules: unknown): RepoConfigRules | undefined {

@@ -82,14 +82,18 @@ model PromoCode {
 
 model Installation {
   id                String   @id @default(cuid())
-  installationId    Int      @unique // GitHub installation ID
-  accountId         Int      // GitHub account ID (user or org)
-  accountType       String   // User or Organization
+  installationId    Int      @unique // GitHub installation ID (0 for GitLab)
+  accountId         Int      // GitHub account ID or 0 for GitLab
+  accountType       String   // User or Organization / GitLab
   accountLogin      String
   targetType        String   // Installation target type
   userId            String?  // Link to User if personal installation
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  provider             String   @default("github") // github | gitlab | bitbucket
+  gitlabAccessToken    String?  @db.Text // GitLab token when provider=gitlab
+  bitbucketAccessToken String?  @db.Text // Bitbucket App Password when provider=bitbucket
+  bitbucketUsername    String?  // Bitbucket username/email for Basic auth with app password
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   user              User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   repositories      Repository[]
@@ -97,30 +101,37 @@ model Installation {
 
   @@index([installationId])
   @@index([userId])
+  @@index([provider])
   @@map("installations")
 }
 
 model Repository {
   id                String   @id @default(cuid())
   installationId    String
-  githubRepoId      Int      @unique
-  name              String
-  fullName          String   // owner/repo
-  owner             String
-  private           Boolean  @default(false)
-  defaultBranch     String
-  language          String?
-  enabled           Boolean  @default(true)
+  githubRepoId        Int      // GitHub repo ID; 0 for GitLab/Bitbucket
+  gitlabProjectId     String?  // GitLab project ID when provider=gitlab
+  bitbucketWorkspace  String?  // Bitbucket workspace when provider=bitbucket
+  bitbucketRepoSlug   String?  // Bitbucket repo slug when provider=bitbucket
+  name                String
+  fullName            String   // owner/repo, GitLab path_with_namespace, or workspace/repo_slug
+  owner               String
+  private             Boolean  @default(false)
+  defaultBranch      String
+  language           String?
+  enabled            Boolean  @default(true)
+  provider           String   @default("github") // github | gitlab | bitbucket
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   installation      Installation @relation(fields: [installationId], references: [id], onDelete: Cascade)
   reviews           Review[]
   documentations    Documentation[]
+  coverageReports   CoverageReport[]
 
   @@unique([installationId, fullName])
   @@index([installationId])
   @@index([githubRepoId])
+  @@index([provider])
   @@map("repositories")
 }
 
@@ -145,6 +156,8 @@ model Review {
   startedAt         DateTime?
   completedAt       DateTime?
   qualityGatePassed Boolean?  // true/false when gate checked; null for legacy reviews
+  maintainabilityGrade String?  // A, B, C, D, F (CodeClimate-style)
+  remediationMinutes  Int?     // estimated minutes to fix all issues (technical debt)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -235,4 +248,22 @@ model Documentation {
   @@index([status])
   @@index([createdAt])
   @@map("documentations")
+}
+
+model CoverageReport {
+  id             String   @id @default(cuid())
+  repositoryId   String
+  commitSha      String
+  percentage     Float    // 0-100
+  lineCoverage   Float?   // optional
+  branchCoverage Float?   // optional
+  details        Json?    // optional per-file or raw payload
+  createdAt      DateTime @default(now())
+
+  repository     Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, commitSha])
+  @@index([repositoryId])
+  @@index([commitSha])
+  @@map("coverage_reports")
 }

@@ -15,7 +15,6 @@ function getGitOwnerRepo(workspaceRoot) {
             cwd: workspaceRoot,
             encoding: 'utf-8',
         }).trim();
-        // https://github.com/owner/repo.git or git@github.com:owner/repo.git
         const match = url.match(/(?:github\.com[:/]|git@github\.com:)([^/]+)\/([^/]+?)(?:\.git)?$/i);
         if (match)
             return { owner: match[1], repo: match[2] };
@@ -24,6 +23,18 @@ function getGitOwnerRepo(workspaceRoot) {
         // not a git repo or no origin
     }
     return null;
+}
+function getCurrentBranch(workspaceRoot) {
+    try {
+        const branch = (0, child_process_1.execSync)('git rev-parse --abbrev-ref HEAD', {
+            cwd: workspaceRoot,
+            encoding: 'utf-8',
+        }).trim();
+        return branch && branch !== 'HEAD' ? branch : null;
+    }
+    catch {
+        return null;
+    }
 }
 function severityToDiagnosticSeverity(severity) {
     switch (severity) {
@@ -59,6 +70,33 @@ async function fetchReviewDetail(apiUrl, token, reviewId) {
         throw new Error(body.error || `HTTP ${res.status}`);
     }
     return res.json();
+}
+const POLL_INTERVAL_MS = 3000;
+const POLL_TIMEOUT_MS = 10 * 60 * 1000; // 10 min
+async function triggerBranchAnalysis(apiUrl, token, owner, repo, ref) {
+    const base = apiUrl.replace(/\/$/, '');
+    const res = await fetch(`${base}/api/analyze/trigger-branch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ owner, repo, ref }),
+    });
+    const data = (await res.json().catch(() => ({})));
+    if (res.status !== 202 || !data.reviewId) {
+        throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    return { reviewId: data.reviewId };
+}
+async function pollReviewUntilComplete(apiUrl, token, reviewId, onStatus) {
+    const start = Date.now();
+    while (Date.now() - start < POLL_TIMEOUT_MS) {
+        const detail = await fetchReviewDetail(apiUrl, token, reviewId);
+        onStatus(detail.status);
+        if (detail.status === 'completed' || detail.status === 'failed') {
+            return detail;
+        }
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+    throw new Error('Analysis timed out');
 }
 function applyDiagnostics(diagnosticCollection, workspaceFolder, issues) {
     diagnosticCollection.clear();
@@ -136,11 +174,61 @@ function activate(context) {
             await vscode.window.showErrorMessage(`NeatCommit: ${msg}`);
         }
     };
-    context.subscriptions.push(vscode.commands.registerCommand('neatcommit.refresh', refresh));
+    const analyzeBranch = async () => {
+        const apiUrl = cfg.get('apiUrl') || 'https://api.neatcommit.com';
+        const t = cfg.get('token');
+        if (!t) {
+            await vscode.window.showWarningMessage('NeatCommit: Set neatcommit.token in settings to run analysis.');
+            return;
+        }
+        const folder = vscode.workspace.workspaceFolders?.[0];
+        if (!folder) {
+            await vscode.window.showWarningMessage('NeatCommit: Open a workspace folder first.');
+            return;
+        }
+        const ownerRepo = getGitOwnerRepo(folder.uri.fsPath);
+        if (!ownerRepo) {
+            await vscode.window.showWarningMessage('NeatCommit: Could not detect git remote (origin). Open a repo with a GitHub origin.');
+            return;
+        }
+        const branch = getCurrentBranch(folder.uri.fsPath);
+        if (!branch) {
+            await vscode.window.showWarningMessage('NeatCommit: Could not detect current branch.');
+            return;
+        }
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Window,
+                title: 'NeatCommit: Analyzing current branch…',
+                cancellable: false,
+            }, async (progress) => {
+                progress.report({ message: 'Triggering analysis…' });
+                const { reviewId } = await triggerBranchAnalysis(apiUrl, t, ownerRepo.owner, ownerRepo.repo, branch);
+                progress.report({ message: 'Waiting for results…' });
+                const detail = await pollReviewUntilComplete(apiUrl, t, reviewId, (status) => {
+                    progress.report({ message: `Status: ${status}…` });
+                });
+                if (detail.status === 'failed') {
+                    diagnosticCollection.clear();
+                    await vscode.window.showErrorMessage('NeatCommit: Analysis failed.');
+                    return;
+                }
+                const issues = detail.issues ?? [];
+                applyDiagnostics(diagnosticCollection, folder, issues);
+                await vscode.window.showInformationMessage(`NeatCommit: Found ${issues.length} issue(s) on branch "${branch}".`);
+            });
+        }
+        catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            diagnosticCollection.clear();
+            await vscode.window.showErrorMessage(`NeatCommit: ${msg}`);
+        }
+    };
+    context.subscriptions.push(vscode.commands.registerCommand('neatcommit.refresh', refresh), vscode.commands.registerCommand('neatcommit.analyzeBranch', analyzeBranch));
     const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-    statusBarItem.command = 'neatcommit.refresh';
+    statusBarItem.command = 'neatcommit.analyzeBranch';
     statusBarItem.text = '$(refresh) NeatCommit';
-    statusBarItem.tooltip = 'Load last review and show issues in Problems';
+    statusBarItem.tooltip = 'Analyze current branch and show issues (no PR needed)';
     statusBarItem.show();
     context.subscriptions.push(statusBarItem);
 }

@@ -22,6 +22,7 @@ import { analyzeWithLLM, LLMAnalysisResult, LLMIssue } from './llm.service';
 import { analyzeQuality } from './quality.service';
 import { analyzeIacFile } from './iac.service';
 import { logger } from '../utils/logger';
+import type { RepoConfig } from '../config/repo-config';
 
 export interface AnalysisResult {
   filename: string;
@@ -62,7 +63,8 @@ export interface CombinedIssue {
  */
 export async function analyzeFile(
   code: string,
-  filename: string
+  filename: string,
+  options?: { repoConfig?: RepoConfig }
 ): Promise<AnalysisResult> {
   logger.info('Starting file analysis', { filename });
 
@@ -213,7 +215,7 @@ export async function analyzeFile(
   let allIssues = combineIssues(securityIssues, llmAnalysis?.issues || []);
 
   // 6. Quality (code smells, duplicates)
-  const qualityIssues = analyzeQuality(code, structure, filename);
+  const qualityIssues = analyzeQuality(code, structure, filename, options?.repoConfig?.duplication);
   qualityIssues.forEach((q) => {
     allIssues.push({
       severity: q.severity,
@@ -404,7 +406,8 @@ function generateSummary(
  * @returns Rezultati za sve fajlove
  */
 export async function analyzeFiles(
-  files: Array<{ code: string; filename: string }>
+  files: Array<{ code: string; filename: string }>,
+  options?: { repoConfig?: RepoConfig }
 ): Promise<AnalysisResult[]> {
   logger.info('Starting multi-file analysis', { fileCount: files.length });
 
@@ -415,7 +418,7 @@ export async function analyzeFiles(
   for (let i = 0; i < files.length; i += batchSize) {
     const batch = files.slice(i, i + batchSize);
     const batchResults = await Promise.all(
-      batch.map((file) => analyzeFile(file.code, file.filename))
+      batch.map((file) => analyzeFile(file.code, file.filename, options))
     );
     results.push(...batchResults);
   }

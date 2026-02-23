@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -15,6 +16,7 @@ import { Repository } from '../../../shared/models';
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatCardModule,
     MatIconModule,
     MatButtonModule,
@@ -31,6 +33,26 @@ export class RepositoriesComponent implements OnInit {
   loading = true;
   error: string | null = null;
   showAllRepos = false; // Toggle za prikaz svih repozitorijuma sa GitHub-a
+
+  // GitLab
+  gitlabToken = '';
+  gitlabProjectId = '';
+  gitlabFullName = '';
+  gitlabName = '';
+  gitlabDefaultBranch = 'main';
+  gitlabConnecting = false;
+  gitlabAdding = false;
+  showGitLabForm = false;
+  bitbucketUsername = '';
+  bitbucketToken = '';
+  bitbucketWorkspace = '';
+  bitbucketRepoSlug = '';
+  bitbucketFullName = '';
+  bitbucketName = '';
+  bitbucketDefaultBranch = 'main';
+  bitbucketConnecting = false;
+  bitbucketAdding = false;
+  showBitbucketForm = false;
 
   constructor(
     private repositoryService: RepositoryService,
@@ -71,6 +93,18 @@ export class RepositoriesComponent implements OnInit {
   }
 
   addRepositoryToDatabase(repo: Repository): void {
+    if (repo.provider === 'gitlab') {
+      this.snackBar.open('GitLab projects are added via the Add GitLab project form below.', 'Close', {
+        duration: 4000,
+      });
+      return;
+    }
+    if (repo.provider === 'bitbucket') {
+      this.snackBar.open('Bitbucket repos are added via the Add Bitbucket repository form below.', 'Close', {
+        duration: 4000,
+      });
+      return;
+    }
     if (!repo.githubRepoId) {
       this.snackBar.open('Invalid repository', 'Close', {
         duration: 3000,
@@ -105,8 +139,8 @@ export class RepositoriesComponent implements OnInit {
   toggleRepository(repo: Repository): void {
     // Proveri da li je repozitorijum u bazi (ima pravi ID, ne GitHub ID kao string)
     // Ako nije u bazi, ne možemo ga enable/disable
-    if (!repo.id || repo.id === repo.githubRepoId.toString()) {
-      // Umesto poruke, ponudi da se doda u bazu
+    const isGitHubIdAsString = repo.provider !== 'gitlab' && repo.provider !== 'bitbucket' && repo.id === repo.githubRepoId?.toString();
+    if (!repo.id || isGitHubIdAsString) {
       this.addRepositoryToDatabase(repo);
       return;
     }
@@ -144,6 +178,128 @@ export class RepositoriesComponent implements OnInit {
         },
       });
     }
+  }
+
+  connectGitLab(): void {
+    if (!this.gitlabToken.trim()) {
+      this.snackBar.open('Enter your GitLab access token', 'Close', { duration: 3000 });
+      return;
+    }
+    this.gitlabConnecting = true;
+    this.repositoryService.connectGitLab(this.gitlabToken.trim()).subscribe({
+      next: () => {
+        this.gitlabConnecting = false;
+        this.snackBar.open('GitLab connected. You can now add projects below.', 'Close', {
+          duration: 4000,
+        });
+        this.loadRepositories();
+      },
+      error: (err) => {
+        this.gitlabConnecting = false;
+        this.snackBar.open(err.error?.error || err.error?.message || 'Failed to connect GitLab', 'Close', {
+          duration: 5000,
+        });
+      },
+    });
+  }
+
+  connectBitbucket(): void {
+    if (!this.bitbucketToken.trim()) {
+      this.snackBar.open('Enter your Bitbucket app password', 'Close', { duration: 3000 });
+      return;
+    }
+    this.bitbucketConnecting = true;
+    this.repositoryService.connectBitbucket(this.bitbucketUsername.trim() || 'x-token-auth', this.bitbucketToken.trim()).subscribe({
+      next: () => {
+        this.bitbucketConnecting = false;
+        this.snackBar.open('Bitbucket connected. You can now add repositories below.', 'Close', {
+          duration: 4000,
+        });
+        this.loadRepositories();
+      },
+      error: (err) => {
+        this.bitbucketConnecting = false;
+        this.snackBar.open(err.error?.error || err.error?.message || 'Failed to connect Bitbucket', 'Close', {
+          duration: 5000,
+        });
+      },
+    });
+  }
+
+  addBitbucketProject(): void {
+    const workspace = this.bitbucketWorkspace.trim();
+    const repoSlug = this.bitbucketRepoSlug.trim();
+    const fullName = this.bitbucketFullName.trim();
+    const name = this.bitbucketName.trim();
+    if (!workspace || !repoSlug || !fullName || !name) {
+      this.snackBar.open('Fill workspace, repo slug, full path (e.g. workspace/repo), and name', 'Close', {
+        duration: 4000,
+      });
+      return;
+    }
+    this.bitbucketAdding = true;
+    this.repositoryService.addBitbucketRepository(workspace, repoSlug, fullName, name, this.bitbucketDefaultBranch || undefined).subscribe({
+      next: () => {
+        this.bitbucketAdding = false;
+        this.bitbucketWorkspace = '';
+        this.bitbucketRepoSlug = '';
+        this.bitbucketFullName = '';
+        this.bitbucketName = '';
+        this.snackBar.open('Bitbucket repository added. Configure the PR webhook to receive analysis.', 'Close', {
+          duration: 5000,
+        });
+        this.loadRepositories();
+      },
+      error: (err) => {
+        this.bitbucketAdding = false;
+        this.snackBar.open(err.error?.error || err.error?.message || 'Failed to add Bitbucket repository', 'Close', {
+          duration: 5000,
+        });
+      },
+    });
+  }
+
+  addGitLabProject(): void {
+    const projectId = this.gitlabProjectId.trim();
+    const fullName = this.gitlabFullName.trim();
+    const name = this.gitlabName.trim();
+    if (!projectId || !fullName || !name) {
+      this.snackBar.open('Fill project ID, full path (e.g. group/project), and name', 'Close', {
+        duration: 4000,
+      });
+      return;
+    }
+    this.gitlabAdding = true;
+    this.repositoryService.addGitLabRepository(projectId, fullName, name, this.gitlabDefaultBranch || undefined).subscribe({
+      next: () => {
+        this.gitlabAdding = false;
+        this.gitlabProjectId = '';
+        this.gitlabFullName = '';
+        this.gitlabName = '';
+        this.snackBar.open('GitLab project added. Configure the MR webhook in GitLab to receive analysis.', 'Close', {
+          duration: 5000,
+        });
+        this.loadRepositories();
+      },
+      error: (err) => {
+        this.gitlabAdding = false;
+        this.snackBar.open(err.error?.error || err.error?.message || 'Failed to add GitLab project', 'Close', {
+          duration: 5000,
+        });
+      },
+    });
+  }
+
+  repoExternalUrl(repo: Repository): string {
+    if (repo.provider === 'gitlab') return `https://gitlab.com/${repo.fullName}`;
+    if (repo.provider === 'bitbucket') return `https://bitbucket.org/${repo.fullName}`;
+    return `https://github.com/${repo.fullName}`;
+  }
+
+  repoExternalLabel(repo: Repository): string {
+    if (repo.provider === 'gitlab') return 'View on GitLab';
+    if (repo.provider === 'bitbucket') return 'View on Bitbucket';
+    return 'View on GitHub';
   }
 
   getLanguageColor(language: string | undefined): string {

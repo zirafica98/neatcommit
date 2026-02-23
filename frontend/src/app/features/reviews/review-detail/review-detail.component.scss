@@ -129,6 +129,40 @@
         border: 1px solid rgba(244, 67, 54, 0.4);
       }
     }
+
+    .grade-badge {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 16px;
+      border-radius: 12px;
+      letter-spacing: 0.5px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      &.grade-a { background: rgba(76, 175, 80, 0.2); color: #2e7d32; }
+      &.grade-b { background: rgba(139, 195, 74, 0.2); color: #558b2f; }
+      &.grade-c { background: rgba(255, 193, 7, 0.2); color: #f9a825; }
+      &.grade-d { background: rgba(255, 152, 0, 0.2); color: #e65100; }
+      &.grade-f { background: rgba(244, 67, 54, 0.2); color: #c62828; }
+    }
+
+    .debt-badge {
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.06);
+      color: #555;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .coverage-badge {
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(33, 150, 243, 0.12);
+      color: #1976d2;
+      border: 1px solid rgba(33, 150, 243, 0.3);
+    }
   }
 }
 

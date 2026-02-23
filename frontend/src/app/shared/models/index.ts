@@ -19,6 +19,10 @@ export interface User {
 export interface Repository {
   id: string;
   githubRepoId: number;
+  gitlabProjectId?: string;
+  bitbucketWorkspace?: string;
+  bitbucketRepoSlug?: string;
+  provider?: 'github' | 'gitlab' | 'bitbucket';
   name: string;
   fullName: string;
   owner: string;
@@ -41,6 +45,8 @@ export interface Review {
   status: 'pending' | 'completed' | 'failed';
   securityScore: number;
   qualityGatePassed?: boolean | null;
+  maintainabilityGrade?: string | null;
+  remediationMinutes?: number | null;
   totalIssues: number;
   criticalIssues: number;
   highIssues: number;
@@ -48,6 +54,7 @@ export interface Review {
   lowIssues: number;
   createdAt: string;
   completedAt?: string;
+  coverage?: { percentage: number; lineCoverage?: number; branchCoverage?: number } | null;
   repository?: Repository;
   issues?: Issue[];
 }

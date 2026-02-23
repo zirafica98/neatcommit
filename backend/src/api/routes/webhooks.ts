@@ -240,9 +240,9 @@ async function handlePullRequestEvent(payload: any) {
     installationId: dbInstallation.id,
   });
 
-  // Pronađi repository u bazi
-  let dbRepository = await prisma.repository.findUnique({
-    where: { githubRepoId: repository.id },
+  // Pronađi repository u bazi (provider=github, githubRepoId – unique per GitHub repo)
+  let dbRepository = await prisma.repository.findFirst({
+    where: { provider: 'github', githubRepoId: repository.id },
   });
 
   // Ako repository ne postoji, kreiraj ga automatski (fallback za development)
@@ -254,9 +254,15 @@ async function handlePullRequestEvent(payload: any) {
 
     try {
       dbRepository = await prisma.repository.upsert({
-        where: { githubRepoId: repository.id },
+        where: {
+          installationId_fullName: {
+            installationId: dbInstallation.id,
+            fullName: repository.full_name,
+          },
+        },
         create: {
           installationId: dbInstallation.id,
+          provider: 'github',
           githubRepoId: repository.id,
           name: repository.name,
           fullName: repository.full_name,
@@ -476,9 +482,15 @@ async function handleInstallationCreated(installation: any, sender: any, reposit
       
       for (const repo of reposToSave) {
         await prisma.repository.upsert({
-          where: { githubRepoId: repo.id },
+          where: {
+            installationId_fullName: {
+              installationId: dbInstallation.id,
+              fullName: repo.full_name,
+            },
+          },
           create: {
             installationId: dbInstallation.id,
+            provider: 'github',
             githubRepoId: repo.id,
             name: repo.name,
             fullName: repo.full_name,
@@ -548,5 +560,202 @@ async function handleInstallationDeleted(installation: any) {
     throw error;
   }
 }
+
+/**
+ * GitLab webhook: Merge Request Hook
+ * Verify X-Gitlab-Token, find repo by project id, create/update review, enqueue analyze-gitlab-mr.
+ */
+router.post('/gitlab', async (req: Request, res: Response) => {
+  try {
+    const secret = env.GITLAB_WEBHOOK_SECRET;
+    if (secret) {
+      const token = req.headers['x-gitlab-token'] as string;
+      if (token !== secret) {
+        logger.warn('GitLab webhook: invalid or missing token');
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+    }
+
+    const payload = req.body;
+    if (payload?.object_kind !== 'merge_request') {
+      logger.debug('GitLab webhook: ignoring non merge_request event', { object_kind: payload?.object_kind });
+      return res.status(200).json({ ok: true });
+    }
+
+    const attrs = payload.object_attributes || {};
+    const action = attrs.action;
+    if (action !== 'open' && action !== 'update' && action !== 'reopen') {
+      logger.debug('GitLab webhook: ignoring action', { action });
+      return res.status(200).json({ ok: true });
+    }
+
+    const project = payload.project || {};
+    const projectId = project.id != null ? String(project.id) : project.path_with_namespace;
+    const pathWithNamespace = project.path_with_namespace || '';
+    const mrIid = attrs.iid;
+    const sha = attrs.last_commit?.id || attrs.sha || '';
+    const title = attrs.title || '';
+    const state = attrs.state || 'opened';
+    const webUrl = attrs.url || payload.object_attributes?.url || '';
+
+    if (!projectId || !mrIid) {
+      logger.warn('GitLab webhook: missing project.id or object_attributes.iid');
+      return res.status(400).json({ error: 'Missing project or MR id' });
+    }
+
+    const dbRepository = await prisma.repository.findFirst({
+      where: { provider: 'gitlab', gitlabProjectId: projectId },
+      include: { installation: true },
+    });
+
+    if (!dbRepository?.installation) {
+      logger.info('GitLab webhook: no enabled repo or installation for project', { projectId });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (!dbRepository.enabled) {
+      return res.status(200).json({ ok: true });
+    }
+
+    const inst = dbRepository.installation;
+    if (inst.provider !== 'gitlab' || !inst.gitlabAccessToken) {
+      logger.warn('GitLab webhook: installation missing token', { installationId: inst.id });
+      return res.status(200).json({ ok: true });
+    }
+
+    const branchId = `gitlab:${projectId}:${mrIid}`;
+    const review = await prisma.review.upsert({
+      where: { githubPrId: branchId },
+      create: {
+        installationId: inst.id,
+        repositoryId: dbRepository.id,
+        userId: inst.userId ?? undefined,
+        githubPrNumber: mrIid,
+        githubPrId: branchId,
+        githubPrUrl: webUrl || `https://gitlab.com/${pathWithNamespace}/-/merge_requests/${mrIid}`,
+        githubPrTitle: title,
+        githubPrState: state,
+        githubSha: sha,
+        status: 'pending',
+      },
+      update: {
+        githubSha: sha,
+        githubPrState: state,
+        status: 'pending',
+        updatedAt: new Date(),
+      },
+    });
+
+    await analysisQueue.add('analyze-gitlab-mr', {
+      installationId: inst.id,
+      repositoryId: dbRepository.id,
+      projectId,
+      mrIid,
+      sha,
+      branchId,
+    });
+
+    logger.info('GitLab MR analysis job queued', {
+      reviewId: review.id,
+      projectId,
+      mrIid,
+    });
+
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    logger.error('GitLab webhook failed', { error: err instanceof Error ? err.message : String(err) });
+    return res.status(500).json({ error: 'Webhook failed' });
+  }
+});
+
+/**
+ * Bitbucket webhook: Pull Request created/updated
+ * X-Event-Key: pullrequest:created, pullrequest:updated
+ */
+router.post('/bitbucket', async (req: Request, res: Response) => {
+  try {
+    const eventKey = req.headers['x-event-key'] as string;
+    if (eventKey !== 'pullrequest:created' && eventKey !== 'pullrequest:updated') {
+      logger.debug('Bitbucket webhook: ignoring event', { eventKey });
+      return res.status(200).json({ ok: true });
+    }
+
+    const payload = req.body;
+    const repository = payload.repository || {};
+    const pullrequest = payload.pullrequest || {};
+    const fullName = repository.full_name;
+    const prId = pullrequest.id;
+    const sha = pullrequest.source?.commit?.hash || '';
+    const title = pullrequest.title || '';
+    const state = pullrequest.state || 'OPEN';
+    const htmlUrl = pullrequest.links?.html?.href || '';
+
+    if (!fullName || !prId) {
+      logger.warn('Bitbucket webhook: missing repository.full_name or pullrequest.id');
+      return res.status(400).json({ error: 'Missing repository or PR id' });
+    }
+
+    const [workspace, repoSlug] = fullName.includes('/') ? fullName.split('/', 2) : [fullName, ''];
+
+    const dbRepository = await prisma.repository.findFirst({
+      where: { provider: 'bitbucket', fullName },
+      include: { installation: true },
+    });
+
+    if (!dbRepository?.installation) {
+      logger.info('Bitbucket webhook: no enabled repo or installation', { fullName });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (!dbRepository.enabled) {
+      return res.status(200).json({ ok: true });
+    }
+
+    const inst = dbRepository.installation;
+    if (inst.provider !== 'bitbucket' || !inst.bitbucketAccessToken) {
+      logger.warn('Bitbucket webhook: installation missing token', { installationId: inst.id });
+      return res.status(200).json({ ok: true });
+    }
+
+    const branchId = `bitbucket:${workspace}:${repoSlug}:${prId}`;
+    const review = await prisma.review.upsert({
+      where: { githubPrId: branchId },
+      create: {
+        installationId: inst.id,
+        repositoryId: dbRepository.id,
+        userId: inst.userId ?? undefined,
+        githubPrNumber: prId,
+        githubPrId: branchId,
+        githubPrUrl: htmlUrl,
+        githubPrTitle: title,
+        githubPrState: state,
+        githubSha: sha,
+        status: 'pending',
+      },
+      update: {
+        githubSha: sha,
+        githubPrState: state,
+        status: 'pending',
+        updatedAt: new Date(),
+      },
+    });
+
+    await analysisQueue.add('analyze-bitbucket-pr', {
+      installationId: inst.id,
+      repositoryId: dbRepository.id,
+      workspace,
+      repoSlug,
+      prId,
+      sha,
+      branchId,
+    });
+
+    logger.info('Bitbucket PR analysis job queued', { reviewId: review.id, fullName, prId });
+    return res.status(200).json({ ok: true });
+  } catch (err) {
+    logger.error('Bitbucket webhook failed', { error: err instanceof Error ? err.message : String(err) });
+    return res.status(500).json({ error: 'Webhook failed' });
+  }
+});
 
 export default router;

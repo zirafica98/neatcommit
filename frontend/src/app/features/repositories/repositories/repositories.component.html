@@ -6,10 +6,62 @@
         {{ showAllRepos ? 'All repositories from GitHub (where App is installed)' : 'Repositories in database' }}
       </p>
     </div>
-    <button mat-raised-button color="primary" (click)="toggleView()">
-      <mat-icon>{{ showAllRepos ? 'list' : 'cloud_download' }}</mat-icon>
-      {{ showAllRepos ? 'Show Database Repos' : 'Show All GitHub Repos' }}
-    </button>
+    <div class="header-actions">
+      <button mat-stroked-button (click)="showGitLabForm = !showGitLabForm">
+        <mat-icon>code</mat-icon>
+        {{ showGitLabForm ? 'Hide GitLab' : 'Add GitLab' }}
+      </button>
+      <button mat-stroked-button (click)="showBitbucketForm = !showBitbucketForm">
+        <mat-icon>code</mat-icon>
+        {{ showBitbucketForm ? 'Hide Bitbucket' : 'Add Bitbucket' }}
+      </button>
+      <button mat-raised-button color="primary" (click)="toggleView()">
+        <mat-icon>{{ showAllRepos ? 'list' : 'cloud_download' }}</mat-icon>
+        {{ showAllRepos ? 'Show Database Repos' : 'Show All GitHub Repos' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="showGitLabForm" class="gitlab-section">
+    <h3>GitLab</h3>
+    <p class="gitlab-hint">Connect with a Personal or Project Access Token, then add projects. Configure the Merge Request webhook in GitLab to point to your NeatCommit <code>POST /webhook/gitlab</code> URL.</p>
+    <div class="gitlab-connect">
+      <input type="password" [(ngModel)]="gitlabToken" placeholder="GitLab access token" class="gitlab-input" />
+      <button mat-raised-button color="primary" (click)="connectGitLab()" [disabled]="gitlabConnecting">
+        {{ gitlabConnecting ? 'Connecting...' : 'Connect GitLab' }}
+      </button>
+    </div>
+    <div class="gitlab-add">
+      <input [(ngModel)]="gitlabProjectId" placeholder="Project ID (number or path)" class="gitlab-input" />
+      <input [(ngModel)]="gitlabFullName" placeholder="Full path (e.g. group/project)" class="gitlab-input" />
+      <input [(ngModel)]="gitlabName" placeholder="Project name" class="gitlab-input" />
+      <input [(ngModel)]="gitlabDefaultBranch" placeholder="Default branch" class="gitlab-input" />
+      <button mat-raised-button (click)="addGitLabProject()" [disabled]="gitlabAdding">
+        {{ gitlabAdding ? 'Adding...' : 'Add GitLab project' }}
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="showBitbucketForm" class="gitlab-section">
+    <h3>Bitbucket</h3>
+    <p class="gitlab-hint">Connect with your Bitbucket username and App Password, then add repositories. Configure the Pull Request webhook to your NeatCommit <code>POST /webhook/bitbucket</code> URL.</p>
+    <div class="gitlab-connect">
+      <input [(ngModel)]="bitbucketUsername" placeholder="Bitbucket username or email" class="gitlab-input" />
+      <input type="password" [(ngModel)]="bitbucketToken" placeholder="App password" class="gitlab-input" />
+      <button mat-raised-button color="primary" (click)="connectBitbucket()" [disabled]="bitbucketConnecting">
+        {{ bitbucketConnecting ? 'Connecting...' : 'Connect Bitbucket' }}
+      </button>
+    </div>
+    <div class="gitlab-add">
+      <input [(ngModel)]="bitbucketWorkspace" placeholder="Workspace" class="gitlab-input" />
+      <input [(ngModel)]="bitbucketRepoSlug" placeholder="Repo slug" class="gitlab-input" />
+      <input [(ngModel)]="bitbucketFullName" placeholder="Full path (workspace/repo)" class="gitlab-input" />
+      <input [(ngModel)]="bitbucketName" placeholder="Repository name" class="gitlab-input" />
+      <input [(ngModel)]="bitbucketDefaultBranch" placeholder="Default branch" class="gitlab-input" />
+      <button mat-raised-button (click)="addBitbucketProject()" [disabled]="bitbucketAdding">
+        {{ bitbucketAdding ? 'Adding...' : 'Add Bitbucket repo' }}
+      </button>
+    </div>
   </div>
 
   <div *ngIf="loading" class="loading-container">
@@ -50,6 +102,9 @@
           <mat-card-title>
             <mat-icon>folder</mat-icon>
             {{ repo.fullName }}
+            <span *ngIf="repo.provider === 'gitlab'" class="provider-chip gitlab">GitLab</span>
+            <span *ngIf="repo.provider === 'bitbucket'" class="provider-chip bitbucket">Bitbucket</span>
+            <span *ngIf="repo.provider === 'github' || !repo.provider" class="provider-chip github">GitHub</span>
           </mat-card-title>
           <mat-card-subtitle>
             <span *ngIf="repo.private" class="private-badge">
@@ -82,13 +137,13 @@
           <div class="toggle-container">
             <span class="toggle-label">Analysis</span>
             <mat-slide-toggle
-              *ngIf="repo.id && repo.id !== repo.githubRepoId.toString()"
+              *ngIf="repo.provider === 'gitlab' || repo.provider === 'bitbucket' || (repo.id && repo.id !== repo.githubRepoId?.toString())"
               [checked]="repo.enabled"
               (change)="toggleRepository(repo)"
               color="primary">
             </mat-slide-toggle>
             <button
-              *ngIf="!repo.id || repo.id === repo.githubRepoId.toString()"
+              *ngIf="repo.provider !== 'gitlab' && repo.provider !== 'bitbucket' && (!repo.id || repo.id === repo.githubRepoId?.toString())"
               mat-raised-button
               color="primary"
               (click)="addRepositoryToDatabase(repo)"
@@ -97,9 +152,9 @@
               Add to Database
             </button>
           </div>
-          <a mat-button color="primary" [attr.href]="'https://github.com/' + repo.fullName" target="_blank">
+          <a mat-button color="primary" [attr.href]="repoExternalUrl(repo)" target="_blank">
             <mat-icon>open_in_new</mat-icon>
-            View on GitHub
+            {{ repoExternalLabel(repo) }}
           </a>
         </mat-card-actions>
       </mat-card>

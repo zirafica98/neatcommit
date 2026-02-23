@@ -7,6 +7,14 @@
     <div class="header-actions">
       <div class="filter-container">
         <mat-form-field appearance="outline">
+          <mat-select [value]="filterProvider" (selectionChange)="onProviderFilterChange($event.value)">
+            <mat-option value="all">All sources</mat-option>
+            <mat-option value="github">GitHub</mat-option>
+            <mat-option value="gitlab">GitLab</mat-option>
+            <mat-option value="bitbucket">Bitbucket</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
           <mat-select [value]="filterSeverity" (selectionChange)="onFilterChange($event.value)">
             <mat-option value="all">All Issues</mat-option>
             <mat-option value="CRITICAL">Critical</mat-option>
@@ -55,6 +63,9 @@
               </div>
               <mat-card-subtitle>
                 <span>{{ review.repository?.fullName || 'Unknown' }}</span>
+                <span *ngIf="review.repository?.provider === 'gitlab'" class="provider-badge gitlab">GitLab</span>
+                <span *ngIf="review.repository?.provider === 'bitbucket'" class="provider-badge bitbucket">Bitbucket</span>
+                <span *ngIf="review.repository?.provider === 'github' || !review.repository?.provider" class="provider-badge github">GitHub</span>
                 <span class="separator">•</span>
                 <span>PR #{{ review.githubPrNumber }}</span>
                 <span class="separator">•</span>

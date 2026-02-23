@@ -3,4 +3,8 @@ export const environment = {
   apiUrl: 'https://neatcommit.onrender.com',
   frontendUrl: 'https://your-frontend-domain.com', // AŽURIRAJ sa production frontend URL-om
   githubAppName: 'neatcommit',
+  github: {
+    clientId: '',
+    redirectUri: 'https://your-frontend-domain.com/auth/callback',
+  },
 };

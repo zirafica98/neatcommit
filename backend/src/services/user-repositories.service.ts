@@ -351,9 +351,9 @@ export async function connectRepository(
       throw new Error('Repository not found in installation');
     }
 
-    // Proveri da li već postoji u bazi
-    let dbRepo = await prisma.repository.findUnique({
-      where: { githubRepoId: githubRepoId },
+    // Proveri da li već postoji u bazi (githubRepoId nije više unique, koristi findFirst)
+    let dbRepo = await prisma.repository.findFirst({
+      where: { provider: 'github', githubRepoId: githubRepoId },
     });
 
     if (dbRepo) {

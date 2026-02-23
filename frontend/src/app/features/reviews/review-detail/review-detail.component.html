@@ -42,6 +42,15 @@
         <span *ngIf="review.status === 'completed' && review.qualityGatePassed !== undefined" class="gate-badge" [class.gate-passed]="review.qualityGatePassed" [class.gate-failed]="review.qualityGatePassed === false">
           {{ review.qualityGatePassed ? 'Quality gate: Passed' : 'Quality gate: Failed' }}
         </span>
+        <span *ngIf="review.status === 'completed' && review.maintainabilityGrade" class="grade-badge" [class]="'grade-' + review.maintainabilityGrade.toLowerCase()">
+          Grade: {{ review.maintainabilityGrade }}
+        </span>
+        <span *ngIf="review.status === 'completed' && review.remediationMinutes != null" class="debt-badge">
+          Technical debt: {{ review.remediationMinutes }} min
+        </span>
+        <span *ngIf="review.coverage != null" class="coverage-badge">
+          Coverage: {{ review.coverage.percentage | number:'1.1-1' }}%
+        </span>
         <a mat-raised-button color="primary" [attr.href]="review.githubPrUrl" target="_blank">
           <mat-icon>open_in_new</mat-icon>
           View PR

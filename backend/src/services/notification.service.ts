@@ -21,6 +21,7 @@ export interface ReviewCompletedNotification {
   securityScore: number;
   totalIssues: number;
   criticalIssues: number;
+  highIssues?: number;
 }
 
 export interface QualityGateFailedNotification {

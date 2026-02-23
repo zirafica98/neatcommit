@@ -60,4 +60,38 @@ export class RepositoryService {
       { githubRepoId }
     );
   }
+
+  /**
+   * Connect GitLab account (save access token)
+   */
+  connectGitLab(accessToken: string): Observable<{ success: boolean; installationId: string; message: string }> {
+    return this.apiService.post<{ success: boolean; installationId: string; message: string }>(
+      '/api/gitlab/connect',
+      { accessToken }
+    );
+  }
+
+  /**
+   * Add GitLab project as repository
+   */
+  addGitLabRepository(projectId: string, fullName: string, name: string, defaultBranch?: string): Observable<{ success: boolean; repository: Repository; message: string }> {
+    return this.apiService.post<{ success: boolean; repository: Repository; message: string }>(
+      '/api/repositories/gitlab',
+      { projectId, fullName, name, defaultBranch }
+    );
+  }
+
+  connectBitbucket(username: string, accessToken: string): Observable<{ success: boolean; installationId: string; message: string }> {
+    return this.apiService.post<{ success: boolean; installationId: string; message: string }>(
+      '/api/bitbucket/connect',
+      { username, accessToken }
+    );
+  }
+
+  addBitbucketRepository(workspace: string, repoSlug: string, fullName: string, name: string, defaultBranch?: string): Observable<{ success: boolean; repository: Repository; message: string }> {
+    return this.apiService.post<{ success: boolean; repository: Repository; message: string }>(
+      '/api/repositories/bitbucket',
+      { workspace, repoSlug, fullName, name, defaultBranch }
+    );
+  }
 }

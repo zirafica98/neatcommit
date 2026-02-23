@@ -212,6 +212,7 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
     });
 
     const installationIds = userInstallations.map((inst) => inst.id);
+    const providerFilter = (req.query.provider === 'github' || req.query.provider === 'gitlab' || req.query.provider === 'bitbucket') ? req.query.provider : undefined;
 
     // Only PR reviews in the list (branch analyses are extension-only, excluded from dashboard)
     const reviews = await prisma.review.findMany({
@@ -220,6 +221,7 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
           in: installationIds,
         },
         githubPrId: { not: { startsWith: 'branch:' } },
+        ...(providerFilter ? { repository: { is: { provider: providerFilter } } } : {}),
       },
       take: 20,
       orderBy: { createdAt: 'desc' },
@@ -252,6 +254,8 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
         status: r.status,
         securityScore: r.securityScore,
         qualityGatePassed: r.qualityGatePassed,
+        maintainabilityGrade: r.maintainabilityGrade,
+        remediationMinutes: r.remediationMinutes,
         totalIssues: r.totalIssues,
         criticalIssues: r.criticalIssues,
         highIssues: r.highIssues,
@@ -262,6 +266,8 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
         repository: r.repository ? {
           id: r.repository.id,
           githubRepoId: r.repository.githubRepoId,
+          gitlabProjectId: r.repository.gitlabProjectId ?? undefined,
+          provider: r.repository.provider,
           name: r.repository.name,
           fullName: r.repository.fullName,
           owner: r.repository.owner,
@@ -326,6 +332,23 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
       return res.status(403).json({ error: 'Forbidden: This review does not belong to you' });
     }
 
+    let coverage: { percentage: number; lineCoverage?: number; branchCoverage?: number } | null = null;
+    const coverageReport = await prisma.coverageReport.findUnique({
+      where: {
+        repositoryId_commitSha: {
+          repositoryId: review.repositoryId,
+          commitSha: review.githubSha,
+        },
+      },
+    });
+    if (coverageReport) {
+      coverage = {
+        percentage: coverageReport.percentage,
+        ...(coverageReport.lineCoverage != null && { lineCoverage: coverageReport.lineCoverage }),
+        ...(coverageReport.branchCoverage != null && { branchCoverage: coverageReport.branchCoverage }),
+      };
+    }
+
     return res.json({
       id: review.id,
       githubPrNumber: review.githubPrNumber,
@@ -337,6 +360,8 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
       status: review.status,
       securityScore: review.securityScore,
       qualityGatePassed: review.qualityGatePassed,
+      maintainabilityGrade: review.maintainabilityGrade,
+      remediationMinutes: review.remediationMinutes,
       totalIssues: review.totalIssues,
       criticalIssues: review.criticalIssues,
       highIssues: review.highIssues,
@@ -347,6 +372,8 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
       repository: review.repository ? {
         id: review.repository.id,
         githubRepoId: review.repository.githubRepoId,
+        gitlabProjectId: review.repository.gitlabProjectId ?? undefined,
+        provider: review.repository.provider,
         name: review.repository.name,
         fullName: review.repository.fullName,
         owner: review.repository.owner,
@@ -357,6 +384,7 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
         createdAt: review.repository.createdAt.toISOString(),
         updatedAt: review.repository.updatedAt.toISOString(),
       } : null,
+      coverage,
       issues: review.issues.map((i) => ({
         id: i.id,
         filePath: i.filePath,
@@ -820,6 +848,10 @@ app.get('/api/repositories', async (req: Request, res: Response) => {
         repositories: repositories.map((r) => ({
           id: r.id,
           githubRepoId: r.githubRepoId,
+          gitlabProjectId: r.gitlabProjectId ?? undefined,
+          bitbucketWorkspace: r.bitbucketWorkspace ?? undefined,
+          bitbucketRepoSlug: r.bitbucketRepoSlug ?? undefined,
+          provider: r.provider,
           name: r.name,
           fullName: r.fullName,
           owner: r.owner,
@@ -843,6 +875,10 @@ app.get('/api/repositories', async (req: Request, res: Response) => {
       repositories: repositories.map((r) => ({
         id: r.id,
         githubRepoId: r.githubRepoId,
+        gitlabProjectId: r.gitlabProjectId ?? undefined,
+        bitbucketWorkspace: r.bitbucketWorkspace ?? undefined,
+        bitbucketRepoSlug: r.bitbucketRepoSlug ?? undefined,
+        provider: r.provider,
         name: r.name,
         fullName: r.fullName,
         owner: r.owner,
@@ -943,6 +979,10 @@ app.get('/api/repositories/:id', async (req: Request, res: Response) => {
     return res.json({
       id: repository.id,
       githubRepoId: repository.githubRepoId,
+      gitlabProjectId: repository.gitlabProjectId ?? undefined,
+      bitbucketWorkspace: repository.bitbucketWorkspace ?? undefined,
+      bitbucketRepoSlug: repository.bitbucketRepoSlug ?? undefined,
+      provider: repository.provider,
       name: repository.name,
       fullName: repository.fullName,
       owner: repository.owner,
@@ -1044,8 +1084,8 @@ app.post('/api/repositories/add', async (req: Request, res: Response) => {
     }
 
     // Proveri da li repozitorijum već postoji u bazi
-    const existingRepo = await prisma.repository.findUnique({
-      where: { githubRepoId: parseInt(githubRepoId.toString(), 10) },
+    const existingRepo = await prisma.repository.findFirst({
+      where: { provider: 'github', githubRepoId: parseInt(githubRepoId.toString(), 10) },
     });
 
     if (existingRepo) {
@@ -1153,6 +1193,388 @@ app.post('/api/repositories/:id/disable', async (req: Request, res: Response) =>
   }
 });
 
+// --- GitLab: connect (save token) and add project as repository ---
+function gitlabInstallationIdForUser(userId: string): number {
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = ((h << 5) - h + userId.charCodeAt(i)) | 0;
+  return -Math.abs(h);
+}
+
+app.post('/api/gitlab/connect', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(authHeader.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Invalid token' });
+
+    const { accessToken } = req.body;
+    if (!accessToken || typeof accessToken !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid accessToken' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const extId = gitlabInstallationIdForUser(user.id);
+    const installation = await prisma.installation.upsert({
+      where: { installationId: extId },
+      create: {
+        installationId: extId,
+        accountId: 0,
+        accountType: 'User',
+        accountLogin: user.username || user.email || 'gitlab',
+        targetType: 'User',
+        userId: user.id,
+        provider: 'gitlab',
+        gitlabAccessToken: accessToken,
+      },
+      update: {
+        gitlabAccessToken: accessToken,
+        accountLogin: user.username || user.email || 'gitlab',
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.json({
+      success: true,
+      installationId: installation.id,
+      message: 'GitLab connected. You can now add GitLab projects as repositories.',
+    });
+  } catch (error) {
+    logger.error('GitLab connect failed', error);
+    return res.status(500).json({
+      error: 'Failed to connect GitLab',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.post('/api/repositories/gitlab', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(authHeader.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Invalid token' });
+
+    const { projectId, fullName, name, defaultBranch } = req.body;
+    if (!projectId || !fullName || !name) {
+      return res.status(400).json({ error: 'Missing projectId, fullName, or name' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const extId = gitlabInstallationIdForUser(user.id);
+    const installation = await prisma.installation.findFirst({
+      where: { provider: 'gitlab', installationId: extId },
+    });
+    if (!installation?.gitlabAccessToken) {
+      return res.status(400).json({
+        error: 'GitLab not connected. Call POST /api/gitlab/connect with your access token first.',
+      });
+    }
+
+    const owner = fullName.includes('/') ? fullName.split('/').slice(0, -1).join('/') : fullName;
+    const repo = await prisma.repository.upsert({
+      where: {
+        installationId_fullName: {
+          installationId: installation.id,
+          fullName: String(fullName),
+        },
+      },
+      create: {
+        installationId: installation.id,
+        provider: 'gitlab',
+        githubRepoId: 0,
+        gitlabProjectId: String(projectId),
+        name: String(name),
+        fullName: String(fullName),
+        owner: String(owner),
+        defaultBranch: defaultBranch || 'main',
+        enabled: true,
+      },
+      update: {
+        name: String(name),
+        fullName: String(fullName),
+        owner: String(owner),
+        defaultBranch: defaultBranch || 'main',
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.json({
+      success: true,
+      repository: {
+        id: repo.id,
+        gitlabProjectId: repo.gitlabProjectId,
+        name: repo.name,
+        fullName: repo.fullName,
+        owner: repo.owner,
+        defaultBranch: repo.defaultBranch,
+        enabled: repo.enabled,
+        provider: repo.provider,
+      },
+      message: 'GitLab project added. Configure the Merge Request webhook to receive analysis.',
+    });
+  } catch (error) {
+    logger.error('Add GitLab repository failed', error);
+    return res.status(500).json({
+      error: 'Failed to add GitLab repository',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// --- Bitbucket: connect (username + app password) and add repo ---
+function bitbucketInstallationIdForUser(userId: string): number {
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = ((h << 5) - h + userId.charCodeAt(i)) | 0;
+  return -Math.abs(h) - 1000000; // offset from GitLab to avoid collision
+}
+
+app.post('/api/bitbucket/connect', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(authHeader.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Invalid token' });
+
+    const { username, accessToken } = req.body;
+    if (!accessToken || typeof accessToken !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid accessToken' });
+    }
+    const bitbucketUsername = (username && typeof username === 'string') ? username : '';
+
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const extId = bitbucketInstallationIdForUser(user.id);
+    const installation = await prisma.installation.upsert({
+      where: { installationId: extId },
+      create: {
+        installationId: extId,
+        accountId: 0,
+        accountType: 'User',
+        accountLogin: bitbucketUsername || user.username || 'bitbucket',
+        targetType: 'User',
+        userId: user.id,
+        provider: 'bitbucket',
+        bitbucketAccessToken: accessToken,
+        bitbucketUsername: bitbucketUsername || null,
+      },
+      update: {
+        bitbucketAccessToken: accessToken,
+        bitbucketUsername: bitbucketUsername || null,
+        accountLogin: bitbucketUsername || user.username || 'bitbucket',
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.json({
+      success: true,
+      installationId: installation.id,
+      message: 'Bitbucket connected. You can now add Bitbucket repositories.',
+    });
+  } catch (error) {
+    logger.error('Bitbucket connect failed', error);
+    return res.status(500).json({
+      error: 'Failed to connect Bitbucket',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.post('/api/repositories/bitbucket', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(authHeader.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Invalid token' });
+
+    const { workspace, repoSlug, fullName, name, defaultBranch } = req.body;
+    if (!workspace || !repoSlug || !fullName || !name) {
+      return res.status(400).json({ error: 'Missing workspace, repoSlug, fullName, or name' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const extId = bitbucketInstallationIdForUser(user.id);
+    const installation = await prisma.installation.findFirst({
+      where: { provider: 'bitbucket', installationId: extId },
+    });
+    if (!installation?.bitbucketAccessToken) {
+      return res.status(400).json({
+        error: 'Bitbucket not connected. Call POST /api/bitbucket/connect with your username and app password first.',
+      });
+    }
+
+    const owner = fullName.includes('/') ? fullName.split('/')[0] : fullName;
+    const repo = await prisma.repository.upsert({
+      where: {
+        installationId_fullName: {
+          installationId: installation.id,
+          fullName: String(fullName),
+        },
+      },
+      create: {
+        installationId: installation.id,
+        provider: 'bitbucket',
+        githubRepoId: 0,
+        bitbucketWorkspace: String(workspace),
+        bitbucketRepoSlug: String(repoSlug),
+        name: String(name),
+        fullName: String(fullName),
+        owner: String(owner),
+        defaultBranch: defaultBranch || 'main',
+        enabled: true,
+      },
+      update: {
+        name: String(name),
+        fullName: String(fullName),
+        owner: String(owner),
+        bitbucketWorkspace: String(workspace),
+        bitbucketRepoSlug: String(repoSlug),
+        defaultBranch: defaultBranch || 'main',
+        updatedAt: new Date(),
+      },
+    });
+
+    return res.json({
+      success: true,
+      repository: {
+        id: repo.id,
+        bitbucketWorkspace: repo.bitbucketWorkspace,
+        bitbucketRepoSlug: repo.bitbucketRepoSlug,
+        name: repo.name,
+        fullName: repo.fullName,
+        owner: repo.owner,
+        defaultBranch: repo.defaultBranch,
+        enabled: repo.enabled,
+        provider: repo.provider,
+      },
+      message: 'Bitbucket repository added. Configure the Pull Request webhook to receive analysis.',
+    });
+  } catch (error) {
+    logger.error('Add Bitbucket repository failed', error);
+    return res.status(500).json({
+      error: 'Failed to add Bitbucket repository',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+// --- Test coverage: ingest and read ---
+app.post('/api/coverage', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(authHeader.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Invalid token' });
+
+    const { repositoryId, commitSha, percentage, lineCoverage, branchCoverage, details } = req.body;
+    if (!repositoryId || !commitSha || percentage == null) {
+      return res.status(400).json({ error: 'Missing repositoryId, commitSha, or percentage' });
+    }
+    const pct = parseFloat(percentage);
+    if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+      return res.status(400).json({ error: 'percentage must be 0-100' });
+    }
+
+    const repo = await prisma.repository.findUnique({
+      where: { id: repositoryId },
+      include: { installation: true },
+    });
+    if (!repo) return res.status(404).json({ error: 'Repository not found' });
+    if (repo.installation.userId !== payload.userId) {
+      return res.status(403).json({ error: 'Forbidden: repository not owned by you' });
+    }
+
+    const report = await prisma.coverageReport.upsert({
+      where: {
+        repositoryId_commitSha: { repositoryId, commitSha: String(commitSha) },
+      },
+      create: {
+        repositoryId,
+        commitSha: String(commitSha),
+        percentage: pct,
+        lineCoverage: lineCoverage != null ? parseFloat(lineCoverage) : null,
+        branchCoverage: branchCoverage != null ? parseFloat(branchCoverage) : null,
+        details: details ?? undefined,
+      },
+      update: {
+        percentage: pct,
+        lineCoverage: lineCoverage != null ? parseFloat(lineCoverage) : null,
+        branchCoverage: branchCoverage != null ? parseFloat(branchCoverage) : null,
+        details: details ?? undefined,
+      },
+    });
+
+    return res.json({
+      success: true,
+      id: report.id,
+      repositoryId: report.repositoryId,
+      commitSha: report.commitSha,
+      percentage: report.percentage,
+    });
+  } catch (error) {
+    logger.error('Coverage ingest failed', error);
+    return res.status(500).json({
+      error: 'Failed to save coverage',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+app.get('/api/repositories/:id/coverage', async (req: Request, res: Response) => {
+  try {
+    const parsed = idSchema.safeParse(req.params.id);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid id' });
+    const repoId = parsed.data;
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+    const { verifyAccessToken } = await import('./services/auth.service');
+    const payload = verifyAccessToken(authHeader.slice(7));
+    if (!payload) return res.status(401).json({ error: 'Invalid token' });
+
+    const repo = await prisma.repository.findUnique({
+      where: { id: repoId },
+      include: { installation: true },
+    });
+    if (!repo) return res.status(404).json({ error: 'Repository not found' });
+    if (repo.installation.userId !== payload.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const limit = Math.min(parseInt(String(req.query.limit), 10) || 20, 100);
+    const reports = await prisma.coverageReport.findMany({
+      where: { repositoryId: repoId },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return res.json({
+      count: reports.length,
+      reports: reports.map((r) => ({
+        id: r.id,
+        commitSha: r.commitSha,
+        percentage: r.percentage,
+        lineCoverage: r.lineCoverage,
+        branchCoverage: r.branchCoverage,
+        createdAt: r.createdAt.toISOString(),
+      })),
+    });
+  } catch (error) {
+    logger.error('Failed to fetch coverage', error);
+    return res.status(500).json({ error: 'Failed to fetch coverage' });
+  }
+});
 
 // API routes with rate limiting
 import authRoutes from './api/routes/auth';

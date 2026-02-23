@@ -2,11 +2,13 @@
  * Quality Service
  *
  * Detects code smells (long functions, too many params, high complexity)
- * and duplicate code blocks.
+ * and duplicate code blocks. Duplication supports config from .neatcommit.yml.
  */
 
+import { minimatch } from 'minimatch';
 import { CodeStructure } from '../utils/ast-parser';
 import { logger } from '../utils/logger';
+import type { RepoConfigDuplication } from '../config/repo-config';
 
 export interface QualityIssue {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO';
@@ -19,8 +21,8 @@ export interface QualityIssue {
 
 const MAX_PARAMS = 4;
 const HIGH_COMPLEXITY = 15;
-const DUPLICATE_BLOCK_LINES = 5;
-const MAX_DUPLICATE_ISSUES = 5;
+const DEFAULT_DUPLICATE_BLOCK_LINES = 8;
+const MAX_DUPLICATE_ISSUES = 8;
 
 /**
  * Code smell checks using AST structure (JS/TS). Returns issues for too many params and high complexity.
@@ -60,11 +62,21 @@ export function analyzeCodeSmells(
 }
 
 /**
- * Simple duplicate detection: normalizes consecutive line blocks, hashes them, reports duplicates.
+ * Duplicate detection: normalizes consecutive line blocks, hashes them, reports duplicates.
+ * Uses config.minLines (default 8) and skips files matching config.ignorePatterns.
  */
-export function analyzeDuplicates(code: string, filename: string): QualityIssue[] {
+export function analyzeDuplicates(
+  code: string,
+  filename: string,
+  config?: RepoConfigDuplication | null
+): QualityIssue[] {
+  const blockSize = config?.minLines ?? DEFAULT_DUPLICATE_BLOCK_LINES;
+  const ignorePatterns = config?.ignorePatterns ?? [];
+  if (ignorePatterns.length > 0 && ignorePatterns.some((p) => minimatch(filename, p, { matchBase: true }))) {
+    return [];
+  }
+
   const lines = code.split(/\r?\n/);
-  const blockSize = DUPLICATE_BLOCK_LINES;
   const normalizedToFirstLine = new Map<string, number[]>();
 
   for (let i = 0; i <= lines.length - blockSize; i++) {
@@ -82,7 +94,7 @@ export function analyzeDuplicates(code: string, filename: string): QualityIssue[
   }
 
   const issues: QualityIssue[] = [];
-  for (const [_, lineNumbers] of normalizedToFirstLine) {
+  for (const [, lineNumbers] of normalizedToFirstLine) {
     if (lineNumbers.length >= 2 && issues.length < MAX_DUPLICATE_ISSUES) {
       issues.push({
         severity: 'LOW',
@@ -95,19 +107,21 @@ export function analyzeDuplicates(code: string, filename: string): QualityIssue[
     }
   }
 
-  logger.debug('Duplicate analysis', { filename, issues: issues.length });
+  logger.debug('Duplicate analysis', { filename, blockSize, issues: issues.length });
   return issues;
 }
 
 /**
  * Runs code smell and duplicate checks. Returns issues compatible with CombinedIssue (category QUALITY/MAINTAINABILITY).
+ * Pass duplication config from repo .neatcommit.yml for configurable block size and ignore patterns.
  */
 export function analyzeQuality(
   code: string,
   structure: CodeStructure,
-  filename: string
+  filename: string,
+  duplicationConfig?: RepoConfigDuplication | null
 ): QualityIssue[] {
   const smellIssues = analyzeCodeSmells(code, structure, filename);
-  const duplicateIssues = analyzeDuplicates(code, filename);
+  const duplicateIssues = analyzeDuplicates(code, filename, duplicationConfig);
   return [...smellIssues, ...duplicateIssues];
 }

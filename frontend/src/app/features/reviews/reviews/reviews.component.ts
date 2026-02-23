@@ -37,6 +37,7 @@ export class ReviewsComponent implements OnInit, OnDestroy {
   loading = true;
   error: string | null = null;
   filterSeverity: string = 'all';
+  filterProvider: string = 'all';
   activelyAnalyzingIds = new Set<string>();
 
   constructor(
@@ -83,6 +84,9 @@ export class ReviewsComponent implements OnInit, OnDestroy {
     if (this.filterSeverity !== 'all') {
       params.severity = this.filterSeverity;
     }
+    if (this.filterProvider === 'github' || this.filterProvider === 'gitlab' || this.filterProvider === 'bitbucket') {
+      params.provider = this.filterProvider;
+    }
 
     this.reviewService.getReviews(params).subscribe({
       next: (response) => {
@@ -99,6 +103,11 @@ export class ReviewsComponent implements OnInit, OnDestroy {
 
   onFilterChange(value: string): void {
     this.filterSeverity = value;
+    this.loadReviews();
+  }
+
+  onProviderFilterChange(value: string): void {
+    this.filterProvider = value;
     this.loadReviews();
   }
 

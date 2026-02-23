@@ -18,7 +18,7 @@ export class ReviewService {
   /**
    * Get all reviews
    */
-  getReviews(params?: { limit?: number; offset?: number }): Observable<{ count: number; reviews: Review[] }> {
+  getReviews(params?: { limit?: number; offset?: number; provider?: 'github' | 'gitlab' | 'bitbucket' }): Observable<{ count: number; reviews: Review[] }> {
     return this.apiService.get<{ count: number; reviews: Review[] }>('/api/reviews', params);
   }
 

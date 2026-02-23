@@ -18,3 +18,22 @@ export interface AnalyzeBranchJob {
   sha: string;
   branchId: string;
 }
+
+export interface AnalyzeGitLabMRJob {
+  installationId: string; // DB Installation.id (cuid)
+  repositoryId: string;
+  projectId: string;
+  mrIid: number;
+  sha: string;
+  branchId: string; // same as review.githubPrId for lookup
+}
+
+export interface AnalyzeBitbucketPRJob {
+  installationId: string;
+  repositoryId: string;
+  workspace: string;
+  repoSlug: string;
+  prId: number;
+  sha: string;
+  branchId: string; // review.githubPrId for lookup
+}

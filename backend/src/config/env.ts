@@ -28,6 +28,10 @@ const envSchema = z.object({
   GITHUB_CLIENT_ID: z.string().optional(), // Opciono - samo ako koristiš OAuth App
   GITHUB_CLIENT_SECRET: z.string().optional(), // Opciono - samo ako koristiš OAuth App
   GITHUB_WEBHOOK_SECRET: z.string(),
+  GITLAB_WEBHOOK_SECRET: z.string().optional(),
+  GITLAB_API_URL: z.string().url().optional(),
+  BITBUCKET_WEBHOOK_SECRET: z.string().optional(),
+  BITBUCKET_API_URL: z.string().url().optional(),
 
   // OpenAI
   OPENAI_API_KEY: z.string(),
