@@ -11,22 +11,28 @@ import prisma from '../config/database';
 import { logger } from '../utils/logger';
 import { User } from '@prisma/client';
 
+export type AuthProvider = 'github' | 'gitlab' | 'bitbucket';
+
 export interface TokenPayload {
   userId: string;
-  githubId?: number; // Optional - može biti undefined za password-based users
+  githubId?: number;
   username: string;
-  role?: string; // USER, ADMIN
+  role?: string;
+  provider?: AuthProvider; // which login method was used – determines what data we show
 }
 
 /**
  * Generiše JWT access token
+ * @param user - User from DB
+ * @param provider - which provider they logged in with (default github for backward compat)
  */
-export function generateAccessToken(user: User): string {
+export function generateAccessToken(user: User, provider?: AuthProvider): string {
   const payload: TokenPayload = {
     userId: user.id,
-    githubId: user.githubId || undefined,
+    githubId: user.githubId ?? undefined,
     username: user.username,
     role: user.role || 'USER',
+    provider: provider ?? (user.githubId != null ? 'github' : user.gitlabId != null ? 'gitlab' : user.bitbucketUuid != null ? 'bitbucket' : 'github'),
   };
 
   return jwt.sign(payload, env.JWT_SECRET, {
@@ -37,11 +43,12 @@ export function generateAccessToken(user: User): string {
 /**
  * Generiše JWT refresh token
  */
-export function generateRefreshToken(user: User): string {
+export function generateRefreshToken(user: User, provider?: AuthProvider): string {
   const payload: TokenPayload = {
     userId: user.id,
-    githubId: user.githubId || undefined,
+    githubId: user.githubId ?? undefined,
     username: user.username,
+    provider: provider ?? undefined,
   };
 
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, {

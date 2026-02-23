@@ -3,26 +3,31 @@
     <div>
       <h1>Repositories</h1>
       <p class="subtitle">
-        {{ showAllRepos ? 'All repositories from GitHub (where App is installed)' : 'Repositories in database' }}
+        <span *ngIf="currentProvider === 'github'">{{ showAllRepos ? 'All repositories from GitHub (where App is installed)' : 'Repositories in database' }}</span>
+        <span *ngIf="currentProvider === 'gitlab'">GitLab projekti</span>
+        <span *ngIf="currentProvider === 'bitbucket'">Bitbucket repozitorijumi</span>
       </p>
     </div>
     <div class="header-actions">
-      <button mat-stroked-button (click)="showGitLabForm = !showGitLabForm">
-        <mat-icon>code</mat-icon>
-        {{ showGitLabForm ? 'Hide GitLab' : 'Add GitLab' }}
-      </button>
-      <button mat-stroked-button (click)="showBitbucketForm = !showBitbucketForm">
-        <mat-icon>code</mat-icon>
-        {{ showBitbucketForm ? 'Hide Bitbucket' : 'Add Bitbucket' }}
-      </button>
-      <button mat-raised-button color="primary" (click)="toggleView()">
+      <!-- GitHub: toggle sve / samo u bazi + Add nije potreban (dodaje se preko "Show All" i Add to Database) -->
+      <button *ngIf="currentProvider === 'github'" mat-raised-button color="primary" (click)="toggleView()">
         <mat-icon>{{ showAllRepos ? 'list' : 'cloud_download' }}</mat-icon>
         {{ showAllRepos ? 'Show Database Repos' : 'Show All GitHub Repos' }}
+      </button>
+      <!-- GitLab: samo forma za dodavanje projekta -->
+      <button *ngIf="currentProvider === 'gitlab'" mat-stroked-button (click)="showGitLabForm = !showGitLabForm">
+        <mat-icon>add</mat-icon>
+        {{ showGitLabForm ? 'Sakrij formu' : 'Dodaj GitLab projekat' }}
+      </button>
+      <!-- Bitbucket: samo forma za dodavanje repozitorijuma -->
+      <button *ngIf="currentProvider === 'bitbucket'" mat-stroked-button (click)="showBitbucketForm = !showBitbucketForm">
+        <mat-icon>add</mat-icon>
+        {{ showBitbucketForm ? 'Sakrij formu' : 'Dodaj Bitbucket repozitorijum' }}
       </button>
     </div>
   </div>
 
-  <div *ngIf="showGitLabForm" class="gitlab-section">
+  <div *ngIf="currentProvider === 'gitlab' && showGitLabForm" class="gitlab-section">
     <h3>GitLab</h3>
     <p class="gitlab-hint">Connect with a Personal or Project Access Token, then add projects. Configure the Merge Request webhook in GitLab to point to your NeatCommit <code>POST /webhook/gitlab</code> URL.</p>
     <div class="gitlab-connect">
@@ -42,7 +47,7 @@
     </div>
   </div>
 
-  <div *ngIf="showBitbucketForm" class="gitlab-section">
+  <div *ngIf="currentProvider === 'bitbucket' && showBitbucketForm" class="gitlab-section">
     <h3>Bitbucket</h3>
     <p class="gitlab-hint">Connect with your Bitbucket username and App Password, then add repositories. Configure the Pull Request webhook to your NeatCommit <code>POST /webhook/bitbucket</code> URL.</p>
     <div class="gitlab-connect">
@@ -81,19 +86,25 @@
     <div *ngIf="repositories.length === 0" class="empty-state">
       <mat-icon>folder</mat-icon>
       <h3>No repositories found</h3>
-      <p *ngIf="error && error.includes('GitHub account')" class="error-message">
-        {{ error }}
-      </p>
-      <p *ngIf="!error || !error.includes('GitHub account')">
-        Repositories will be automatically added when you open a Pull Request in a repository where the GitHub App is installed.
-      </p>
-      <p *ngIf="!error || !error.includes('GitHub account')" class="help-text">
-        If you've already installed the GitHub App, make sure you're logged in with the same GitHub account.
-      </p>
-      <a mat-raised-button color="primary" href="https://github.com/apps/neatcommit" target="_blank">
-        <mat-icon>add</mat-icon>
-        Install GitHub App
-      </a>
+      <ng-container *ngIf="currentProvider === 'github'">
+        <p *ngIf="error && error.includes('GitHub account')" class="error-message">{{ error }}</p>
+        <p *ngIf="!error || !error.includes('GitHub account')">
+          Repositories will be automatically added when you open a Pull Request in a repository where the GitHub App is installed.
+        </p>
+        <p *ngIf="!error || !error.includes('GitHub account')" class="help-text">
+          If you've already installed the GitHub App, make sure you're logged in with the same GitHub account.
+        </p>
+        <a mat-raised-button color="primary" href="https://github.com/apps/neatcommit" target="_blank">
+          <mat-icon>add</mat-icon>
+          Install GitHub App
+        </a>
+      </ng-container>
+      <ng-container *ngIf="currentProvider === 'gitlab'">
+        <p>Dodajte GitLab projekat pomoću forme iznad (Dodaj GitLab projekat).</p>
+      </ng-container>
+      <ng-container *ngIf="currentProvider === 'bitbucket'">
+        <p>Dodajte Bitbucket repozitorijum pomoću forme iznad (Dodaj Bitbucket repozitorijum).</p>
+      </ng-container>
     </div>
 
     <div *ngIf="repositories.length > 0" class="repositories-grid">

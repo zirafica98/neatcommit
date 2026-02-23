@@ -9,6 +9,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { RepositoryService } from '../../../core/services/repository.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Repository } from '../../../shared/models';
 
 @Component({
@@ -56,8 +57,13 @@ export class RepositoriesComponent implements OnInit {
 
   constructor(
     private repositoryService: RepositoryService,
+    private authService: AuthService,
     private snackBar: MatSnackBar
   ) {}
+
+  get currentProvider(): 'github' | 'gitlab' | 'bitbucket' {
+    return this.authService.currentProvider;
+  }
 
   ngOnInit(): void {
     this.loadRepositories();

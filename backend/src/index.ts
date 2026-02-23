@@ -191,10 +191,11 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
     const authHeader = req.headers.authorization;
     let userId: string | null = null;
 
+    let payload: { userId?: string; provider?: string } | null = null;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const { verifyAccessToken } = await import('./services/auth.service');
-      const payload = verifyAccessToken(token);
+      payload = verifyAccessToken(token);
       if (payload) {
         userId = payload.userId;
       }
@@ -205,14 +206,15 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Pronađi sve installations za ovog korisnika
+    const loginProvider = (payload?.provider === 'github' || payload?.provider === 'gitlab' || payload?.provider === 'bitbucket') ? payload.provider : 'github';
+
+    // Samo installations za ovog korisnika i za provider kojim se ulogovao
     const userInstallations = await prisma.installation.findMany({
-      where: { userId: userId },
+      where: { userId, provider: loginProvider },
       select: { id: true },
     });
 
     const installationIds = userInstallations.map((inst) => inst.id);
-    const providerFilter = (req.query.provider === 'github' || req.query.provider === 'gitlab' || req.query.provider === 'bitbucket') ? req.query.provider : undefined;
 
     // Only PR reviews in the list (branch analyses are extension-only, excluded from dashboard)
     const reviews = await prisma.review.findMany({
@@ -221,7 +223,6 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
           in: installationIds,
         },
         githubPrId: { not: { startsWith: 'branch:' } },
-        ...(providerFilter ? { repository: { is: { provider: providerFilter } } } : {}),
       },
       take: 20,
       orderBy: { createdAt: 'desc' },
@@ -795,47 +796,45 @@ app.get('/api/dashboard/analytics', async (_req: Request, res: Response) => {
 // Repositories endpoints
 app.get('/api/repositories', async (req: Request, res: Response) => {
   try {
-    // Proveri autentifikaciju
     const authHeader = req.headers.authorization;
     let userId: string | null = null;
+    let payload: { userId?: string; provider?: string } | null = null;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const { verifyAccessToken } = await import('./services/auth.service');
-      const payload = verifyAccessToken(token);
+      payload = verifyAccessToken(token);
       userId = payload?.userId || null;
     }
 
-    // Ako je korisnik autentifikovan, vrati samo njegove repozitorijume
+    // Ako je korisnik autentifikovan, vrati samo njegove repozitorijume za provider kojim se ulogovao
     if (userId) {
-      // Pokušaj da povežeš installation sa korisnikom ako nije povezan
+      const loginProvider = (payload?.provider === 'github' || payload?.provider === 'gitlab' || payload?.provider === 'bitbucket') ? payload.provider : 'github';
+
       const user = await prisma.user.findUnique({
         where: { id: userId },
       });
 
-      if (user && user.githubId) {
-        // Pronađi installation-e koje nisu povezane sa korisnikom ali imaju isti accountId
+      if (user && user.githubId && loginProvider === 'github') {
         const updated = await prisma.installation.updateMany({
           where: {
             accountId: user.githubId,
-            userId: null, // Nisu povezani
+            userId: null,
           },
           data: {
             userId: user.id,
           },
         });
-        
         if (updated.count > 0) {
           logger.info('Linked installations to user on repositories request', {
             userId: user.id,
-            githubId: user.githubId,
             linkedCount: updated.count,
           });
         }
       }
 
       const installations = await prisma.installation.findMany({
-        where: { userId },
+        where: { userId, provider: loginProvider },
         include: {
           repositories: true,
         },

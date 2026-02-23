@@ -11,9 +11,11 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  githubId      Int?      @unique // Opciono - samo za GitHub OAuth korisnike
-  username      String    @unique
+  id             String    @id @default(cuid())
+  githubId       Int?      @unique // GitHub OAuth
+  gitlabId       Int?      @unique // GitLab (token login)
+  bitbucketUuid  String?   @unique // Bitbucket (app password login)
+  username       String    @unique
   email         String?   @unique
   password      String?   // Hashed password - samo za password-based login
   avatarUrl     String?
@@ -28,6 +30,8 @@ model User {
   subscription  Subscription?
 
   @@index([githubId])
+  @@index([gitlabId])
+  @@index([bitbucketUuid])
   @@index([username])
   @@index([email])
   @@index([role])

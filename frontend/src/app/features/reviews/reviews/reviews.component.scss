@@ -63,8 +63,13 @@
     @media (max-width: 768px) {
       font-size: 14px;
     }
+
+    .provider-label {
+      opacity: 0.85;
+      font-size: 0.95em;
+    }
   }
-  
+
   .filter-container {
     min-width: 200px;
     

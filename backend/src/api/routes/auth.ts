@@ -15,6 +15,7 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
   verifyAccessToken,
+  type AuthProvider,
 } from '../../services/auth.service';
 import { hashPassword, verifyPassword, validatePasswordStrength } from '../../utils/password';
 import prisma from '../../config/database';
@@ -110,8 +111,8 @@ router.get('/github/check', async (req: Request, res: Response) => {
     const installation = user.installations[0];
     
     // Generiši JWT tokene
-    const jwtAccessToken = generateAccessToken(user);
-    const jwtRefreshToken = generateRefreshToken(user);
+    const jwtAccessToken = generateAccessToken(user, 'github');
+    const jwtRefreshToken = generateRefreshToken(user, 'github');
 
     logger.info('User authenticated via installation check', {
       userId: user.id,
@@ -207,8 +208,8 @@ router.get('/github/complete', async (req: Request, res: Response) => {
     }
 
     // Generiši JWT tokene
-    const jwtAccessToken = generateAccessToken(installation.user);
-    const jwtRefreshToken = generateRefreshToken(installation.user);
+    const jwtAccessToken = generateAccessToken(installation.user, 'github');
+    const jwtRefreshToken = generateRefreshToken(installation.user, 'github');
 
     logger.info('User authenticated via manual completion', {
       userId: installation.user.id,
@@ -295,8 +296,8 @@ router.get('/github/callback', async (req: Request, res: Response) => {
         }
 
         if (resolvedInstallation?.user) {
-          const jwtAccessToken = generateAccessToken(resolvedInstallation.user);
-          const jwtRefreshToken = generateRefreshToken(resolvedInstallation.user);
+          const jwtAccessToken = generateAccessToken(resolvedInstallation.user, 'github');
+          const jwtRefreshToken = generateRefreshToken(resolvedInstallation.user, 'github');
           logger.info('User authenticated via installation callback (after retry)', {
             userId: resolvedInstallation.user.id,
             username: resolvedInstallation.user.username,
@@ -316,8 +317,8 @@ router.get('/github/callback', async (req: Request, res: Response) => {
             where: { id: resolvedInstallation.id },
             data: { userId: userByAccount.id },
           });
-          const jwtAccessToken = generateAccessToken(userByAccount);
-          const jwtRefreshToken = generateRefreshToken(userByAccount);
+          const jwtAccessToken = generateAccessToken(userByAccount, 'github');
+          const jwtRefreshToken = generateRefreshToken(userByAccount, 'github');
           logger.info('User linked to installation from DB (after wait)', {
             userId: userByAccount.id,
             username: userByAccount.username,
@@ -336,8 +337,8 @@ router.get('/github/callback', async (req: Request, res: Response) => {
       } else {
         // Installation postoji - proveri da li ima povezanog korisnika
         if (installation.user) {
-          const jwtAccessToken = generateAccessToken(installation.user);
-          const jwtRefreshToken = generateRefreshToken(installation.user);
+          const jwtAccessToken = generateAccessToken(installation.user, 'github');
+          const jwtRefreshToken = generateRefreshToken(installation.user, 'github');
 
           logger.info('User authenticated via installation callback', {
             userId: installation.user.id,
@@ -361,8 +362,8 @@ router.get('/github/callback', async (req: Request, res: Response) => {
               where: { id: installation.id },
               data: { userId: userByAccount.id },
             });
-            const jwtAccessToken = generateAccessToken(userByAccount);
-            const jwtRefreshToken = generateRefreshToken(userByAccount);
+            const jwtAccessToken = generateAccessToken(userByAccount, 'github');
+            const jwtRefreshToken = generateRefreshToken(userByAccount, 'github');
             logger.info('User linked to installation from DB (accountId)', {
               userId: userByAccount.id,
               username: userByAccount.username,
@@ -419,8 +420,8 @@ router.get('/github/callback', async (req: Request, res: Response) => {
       // Ako korisnik ima repozitorijume, znači da ima instalaciju
       if (repositories.length > 0) {
         // Korisnik ima instalaciju - loguj ga
-        const jwtAccessToken = generateAccessToken(user);
-        const jwtRefreshToken = generateRefreshToken(user);
+        const jwtAccessToken = generateAccessToken(user, 'github');
+        const jwtRefreshToken = generateRefreshToken(user, 'github');
 
         logger.info('User authenticated via OAuth with existing installation', {
           userId: user.id,
@@ -492,8 +493,8 @@ router.post('/github/callback', async (req: Request, res: Response) => {
     const user = await findOrCreateUser(githubUser);
 
     // 4. Generiši JWT tokene
-    const jwtAccessToken = generateAccessToken(user);
-    const jwtRefreshToken = generateRefreshToken(user);
+    const jwtAccessToken = generateAccessToken(user, 'github');
+    const jwtRefreshToken = generateRefreshToken(user, 'github');
 
     logger.info('User authenticated (POST)', {
       userId: user.id,
@@ -552,8 +553,8 @@ router.post('/refresh', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    // Generiši novi access token
-    const newAccessToken = generateAccessToken(user);
+    // Generiši novi access token (zadrži provider iz starog refresh tokena)
+    const newAccessToken = generateAccessToken(user, payload.provider);
 
     return res.json({
       accessToken: newAccessToken,
@@ -596,14 +597,19 @@ router.get('/me', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const provider: AuthProvider = payload.provider ?? (user.githubId != null ? 'github' : user.gitlabId != null ? 'gitlab' : user.bitbucketUuid != null ? 'bitbucket' : 'github');
+
     return res.json({
       id: user.id,
       githubId: user.githubId,
+      gitlabId: user.gitlabId,
+      bitbucketUuid: user.bitbucketUuid,
       username: user.username,
       email: user.email,
       avatarUrl: user.avatarUrl,
       name: user.name,
       role: user.role || 'USER',
+      provider,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     });
@@ -759,6 +765,7 @@ router.post('/login', async (req: Request, res: Response) => {
         avatarUrl: user.avatarUrl,
         name: user.name,
         role: user.role || 'USER',
+        provider: 'github' as AuthProvider,
         createdAt: user.createdAt.toISOString(),
         updatedAt: user.updatedAt.toISOString(),
       },
@@ -769,6 +776,189 @@ router.post('/login', async (req: Request, res: Response) => {
     logger.error('Login failed:', error);
     return res.status(500).json({
       error: 'Login failed',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+const gitlabLoginSchema = z.object({ accessToken: z.string().min(1).max(2000) });
+const bitbucketLoginSchema = z.object({
+  username: z.string().min(1).max(256),
+  appPassword: z.string().min(1).max(2000),
+});
+
+/**
+ * POST /api/auth/gitlab/login
+ * Login sa GitLab Personal/Project Access Token. Prikazuju se samo GitLab podaci.
+ */
+router.post('/gitlab/login', async (req: Request, res: Response) => {
+  try {
+    const parsed = gitlabLoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Access token is required' });
+    }
+    const { accessToken } = parsed.data;
+
+    const gitlabUrl = process.env.GITLAB_API_URL || 'https://gitlab.com/api/v4';
+    const resUser = await fetch(`${gitlabUrl}/user`, {
+      headers: { 'PRIVATE-TOKEN': accessToken },
+    });
+    if (!resUser.ok) {
+      return res.status(401).json({ error: 'Invalid GitLab token' });
+    }
+    const glUser = (await resUser.json()) as { id: number; username?: string; name?: string; email?: string };
+
+    const gitlabId = glUser.id;
+    const username = (glUser.username || `gitlab_${gitlabId}`).slice(0, 100);
+
+    let user = await prisma.user.findUnique({ where: { gitlabId } });
+    if (!user) {
+      const existing = await prisma.user.findUnique({ where: { username } });
+      const finalUsername = existing ? `gitlab_${gitlabId}` : username;
+      user = await prisma.user.create({
+        data: {
+          gitlabId,
+          username: finalUsername,
+          name: glUser.name ?? null,
+          email: glUser.email ?? null,
+        },
+      });
+    }
+
+    const extId = -Math.abs((gitlabId * 1000) % 2147483647) - 5000000;
+    let installation = await prisma.installation.findFirst({
+      where: { userId: user.id, provider: 'gitlab' },
+    });
+    if (!installation) {
+      installation = await prisma.installation.create({
+        data: {
+          installationId: extId,
+          accountId: 0,
+          accountType: 'User',
+          accountLogin: user.username,
+          targetType: 'User',
+          userId: user.id,
+          provider: 'gitlab',
+          gitlabAccessToken: accessToken,
+        },
+      });
+    } else {
+      await prisma.installation.update({
+        where: { id: installation.id },
+        data: { gitlabAccessToken: accessToken, updatedAt: new Date() },
+      });
+    }
+
+    const jwtAccessToken = generateAccessToken(user, 'gitlab');
+    const jwtRefreshToken = generateRefreshToken(user, 'gitlab');
+
+    return res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role || 'USER',
+        provider: 'gitlab' as AuthProvider,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      accessToken: jwtAccessToken,
+      refreshToken: jwtRefreshToken,
+    });
+  } catch (error) {
+    logger.error('GitLab login failed:', error);
+    return res.status(500).json({
+      error: 'GitLab login failed',
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+/**
+ * POST /api/auth/bitbucket/login
+ * Login sa Bitbucket username + App Password. Prikazuju se samo Bitbucket podaci.
+ */
+router.post('/bitbucket/login', async (req: Request, res: Response) => {
+  try {
+    const parsed = bitbucketLoginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Username and app password are required' });
+    }
+    const { username: bbUsername, appPassword } = parsed.data;
+
+    const auth = Buffer.from(`${bbUsername}:${appPassword}`, 'utf8').toString('base64');
+    const resUser = await fetch('https://api.bitbucket.org/2.0/user', {
+      headers: { Authorization: `Basic ${auth}` },
+    });
+    if (!resUser.ok) {
+      return res.status(401).json({ error: 'Invalid Bitbucket username or app password' });
+    }
+    const bbUser = (await resUser.json()) as { uuid?: string; username?: string; display_name?: string };
+
+    const bitbucketUuid = bbUser.uuid || '';
+    const displayName = (bbUser.display_name || bbUser.username || `bitbucket_${bitbucketUuid.slice(0, 8)}`).slice(0, 100);
+    const username = (bbUser.username || `bitbucket_${bitbucketUuid.slice(0, 8)}`).slice(0, 100);
+
+    let user = await prisma.user.findUnique({ where: { bitbucketUuid: bitbucketUuid || undefined } });
+    if (!user) {
+      const existing = await prisma.user.findUnique({ where: { username } });
+      const finalUsername = existing ? `bitbucket_${bitbucketUuid.slice(0, 8)}` : username;
+      user = await prisma.user.create({
+        data: {
+          bitbucketUuid: bitbucketUuid || null,
+          username: finalUsername,
+          name: displayName,
+        },
+      });
+    }
+
+    const extId = -Math.abs(bitbucketUuid.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)) - 6000000;
+    let installation = await prisma.installation.findFirst({
+      where: { userId: user.id, provider: 'bitbucket' },
+    });
+    if (!installation) {
+      installation = await prisma.installation.create({
+        data: {
+          installationId: extId,
+          accountId: 0,
+          accountType: 'User',
+          accountLogin: user.username,
+          targetType: 'User',
+          userId: user.id,
+          provider: 'bitbucket',
+          bitbucketAccessToken: appPassword,
+          bitbucketUsername: bbUsername,
+        },
+      });
+    } else {
+      await prisma.installation.update({
+        where: { id: installation.id },
+        data: { bitbucketAccessToken: appPassword, bitbucketUsername: bbUsername, updatedAt: new Date() },
+      });
+    }
+
+    const jwtAccessToken = generateAccessToken(user, 'bitbucket');
+    const jwtRefreshToken = generateRefreshToken(user, 'bitbucket');
+
+    return res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        name: user.name,
+        role: user.role || 'USER',
+        provider: 'bitbucket' as AuthProvider,
+        createdAt: user.createdAt.toISOString(),
+        updatedAt: user.updatedAt.toISOString(),
+      },
+      accessToken: jwtAccessToken,
+      refreshToken: jwtRefreshToken,
+    });
+  } catch (error) {
+    logger.error('Bitbucket login failed:', error);
+    return res.status(500).json({
+      error: 'Bitbucket login failed',
       message: error instanceof Error ? error.message : String(error),
     });
   }

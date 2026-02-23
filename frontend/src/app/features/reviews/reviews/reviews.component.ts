@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { ReviewService } from '../../../core/services/review.service';
 import { ExportService } from '../../../core/services/export.service';
 import { RealtimeService } from '../../../core/services/realtime.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Review } from '../../../shared/models';
 
 @Component({
@@ -37,14 +38,26 @@ export class ReviewsComponent implements OnInit, OnDestroy {
   loading = true;
   error: string | null = null;
   filterSeverity: string = 'all';
-  filterProvider: string = 'all';
   activelyAnalyzingIds = new Set<string>();
 
   constructor(
     private reviewService: ReviewService,
     private exportService: ExportService,
-    private realtimeService: RealtimeService
+    private realtimeService: RealtimeService,
+    private authService: AuthService
   ) {}
+
+  get currentProvider(): 'github' | 'gitlab' | 'bitbucket' | undefined {
+    return this.authService.currentProvider;
+  }
+
+  get currentProviderLabel(): string {
+    const p = this.currentProvider;
+    if (p === 'github') return 'GitHub';
+    if (p === 'gitlab') return 'GitLab';
+    if (p === 'bitbucket') return 'Bitbucket';
+    return '';
+  }
 
   ngOnInit(): void {
     this.loadReviews();
@@ -84,9 +97,7 @@ export class ReviewsComponent implements OnInit, OnDestroy {
     if (this.filterSeverity !== 'all') {
       params.severity = this.filterSeverity;
     }
-    if (this.filterProvider === 'github' || this.filterProvider === 'gitlab' || this.filterProvider === 'bitbucket') {
-      params.provider = this.filterProvider;
-    }
+    // Provider comes from JWT; backend returns only current provider's reviews
 
     this.reviewService.getReviews(params).subscribe({
       next: (response) => {
@@ -103,11 +114,6 @@ export class ReviewsComponent implements OnInit, OnDestroy {
 
   onFilterChange(value: string): void {
     this.filterSeverity = value;
-    this.loadReviews();
-  }
-
-  onProviderFilterChange(value: string): void {
-    this.filterProvider = value;
     this.loadReviews();
   }
 

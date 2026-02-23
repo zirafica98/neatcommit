@@ -9,7 +9,7 @@ import { Router } from '@angular/router';
 import { Observable, BehaviorSubject, of, throwError } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
 import { ApiService } from './api.service';
-import { User } from '../../shared/models';
+import { User, AuthProvider } from '../../shared/models';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -67,6 +67,13 @@ export class AuthService {
    */
   get isAdmin(): boolean {
     return this.currentUser?.role === 'ADMIN';
+  }
+
+  /**
+   * Provider kojim se korisnik ulogovao – određuje da li prikazujemo GitHub / GitLab / Bitbucket podatke
+   */
+  get currentProvider(): AuthProvider {
+    return this.currentUser?.provider ?? 'github';
   }
 
   /**
@@ -142,12 +149,48 @@ export class AuthService {
 
   /**
    * Initiate GitHub OAuth login
-   * Redirektuje korisnika na backend OAuth endpoint koji će ga redirektovati na GitHub
    */
   loginWithGitHub(): void {
-    // Redirektuj direktno na backend OAuth endpoint
-    // Backend će proveriti da li korisnik ima installation i redirektovati ga na GitHub OAuth
     window.location.href = `${environment.apiUrl}/api/auth/github`;
+  }
+
+  /**
+   * Login sa GitLab Personal/Project Access Token. Prikazuju se samo GitLab podaci.
+   */
+  loginWithGitLab(accessToken: string): Observable<{ user: User; accessToken: string; refreshToken: string }> {
+    return this.apiService.post<{ user: User; accessToken: string; refreshToken: string }>('/api/auth/gitlab/login', {
+      accessToken,
+    }).pipe(
+      tap((response) => {
+        if (response.accessToken) localStorage.setItem('access_token', response.accessToken);
+        if (response.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
+        this.setUser(response.user);
+      }),
+      catchError((error) => {
+        console.error('GitLab login error:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Login sa Bitbucket username + App Password. Prikazuju se samo Bitbucket podaci.
+   */
+  loginWithBitbucket(username: string, appPassword: string): Observable<{ user: User; accessToken: string; refreshToken: string }> {
+    return this.apiService.post<{ user: User; accessToken: string; refreshToken: string }>('/api/auth/bitbucket/login', {
+      username,
+      appPassword,
+    }).pipe(
+      tap((response) => {
+        if (response.accessToken) localStorage.setItem('access_token', response.accessToken);
+        if (response.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
+        this.setUser(response.user);
+      }),
+      catchError((error) => {
+        console.error('Bitbucket login error:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   /**

@@ -4,14 +4,17 @@
  * Tipovi koji se koriste kroz aplikaciju
  */
 
+export type AuthProvider = 'github' | 'gitlab' | 'bitbucket';
+
 export interface User {
   id: string;
-  githubId: number;
+  githubId?: number;
   username: string;
   email?: string;
   avatarUrl?: string;
   name?: string;
   role?: string; // USER, ADMIN
+  provider?: AuthProvider; // način prijave – određuje šta se prikazuje
   createdAt: string;
   updatedAt: string;
 }

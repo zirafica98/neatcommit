@@ -13,31 +13,69 @@
         <mat-icon>info</mat-icon>
         {{ loginError }}
       </div>
-      <!-- GitHub OAuth - Main Option -->
-      <div class="main-login-section">
-        <p class="description">
-          Connect your GitHub account to start automated code reviews and security analysis.
-        </p>
-        <button mat-raised-button color="primary" (click)="loginWithGitHub()" class="full-width github-button">
+
+      <p class="description">Prijavite se jednim od načina. Videćete samo podatke za izabrani provider.</p>
+
+      <!-- 1. GitHub -->
+      <div class="provider-section">
+        <button mat-raised-button color="primary" (click)="loginWithGitHub()" class="full-width provider-button github-button">
           <mat-icon>code</mat-icon>
           Sign in with GitHub
         </button>
-
-        <!-- How it works - šta korisnika čeka -->
         <div class="how-it-works">
           <button mat-button type="button" class="how-it-works-toggle" (click)="toggleHowItWorks()">
             <mat-icon>{{ showHowItWorks ? 'expand_less' : 'info' }}</mat-icon>
             <span>{{ showHowItWorks ? 'Hide steps' : 'What happens next?' }}</span>
           </button>
           <div *ngIf="showHowItWorks" class="how-it-works-steps">
-            <p class="how-it-works-intro">Clicking "Sign in with GitHub" will take you through:</p>
             <ol>
-              <li><strong>GitHub</strong> — you’ll be redirected to GitHub to sign in (if you aren’t already).</li>
-              <li><strong>Install the app</strong> — if NeatCommit isn’t installed yet, GitHub will ask you to install our app on your account or organization.</li>
-              <li><strong>Choose repositories</strong> — select which repositories NeatCommit can access (all, selected, or a single repo).</li>
-              <li><strong>Back to the app</strong> — after confirming, you’ll return here and can use the dashboard, reviews, and documentation.</li>
+              <li>Redirect na GitHub → instalacija NeatCommit app → izbor repozitorijuma → povratak u app.</li>
             </ol>
           </div>
+        </div>
+      </div>
+
+      <!-- 2. GitLab -->
+      <div class="provider-section">
+        <button mat-stroked-button (click)="showGitLabForm = !showGitLabForm" class="full-width provider-button">
+          <mat-icon>code</mat-icon>
+          Sign in with GitLab
+        </button>
+        <div *ngIf="showGitLabForm" class="provider-form">
+          <p class="provider-hint">Unesite Personal ili Project Access Token (Scope: <code>api</code>, <code>read_user</code>). Videćete samo GitLab MR-e i repozitorijume.</p>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>GitLab Access Token</mat-label>
+            <input matInput type="password" [(ngModel)]="gitlabToken" placeholder="glpat-..." />
+          </mat-form-field>
+          <button mat-raised-button (click)="loginWithGitLab()" [disabled]="!gitlabToken?.trim() || gitlabLoading" class="full-width">
+            <mat-spinner *ngIf="gitlabLoading" diameter="20" class="inline-spinner"></mat-spinner>
+            <span *ngIf="!gitlabLoading">Prijava sa GitLab</span>
+            <span *ngIf="gitlabLoading">Prijava...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Bitbucket -->
+      <div class="provider-section">
+        <button mat-stroked-button (click)="showBitbucketForm = !showBitbucketForm" class="full-width provider-button">
+          <mat-icon>code</mat-icon>
+          Sign in with Bitbucket
+        </button>
+        <div *ngIf="showBitbucketForm" class="provider-form">
+          <p class="provider-hint">Koristite Bitbucket username i App Password (Repository: Read/Write). Videćete samo Bitbucket PR-ove i repozitorijume.</p>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Bitbucket username ili email</mat-label>
+            <input matInput [(ngModel)]="bitbucketUsername" placeholder="username" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>App Password</mat-label>
+            <input matInput type="password" [(ngModel)]="bitbucketAppPassword" placeholder="App password" />
+          </mat-form-field>
+          <button mat-raised-button (click)="loginWithBitbucket()" [disabled]="!bitbucketUsername?.trim() || !bitbucketAppPassword?.trim() || bitbucketLoading" class="full-width">
+            <mat-spinner *ngIf="bitbucketLoading" diameter="20" class="inline-spinner"></mat-spinner>
+            <span *ngIf="!bitbucketLoading">Prijava sa Bitbucket</span>
+            <span *ngIf="bitbucketLoading">Prijava...</span>
+          </button>
         </div>
       </div>
 

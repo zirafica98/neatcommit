@@ -2,18 +2,13 @@
   <div class="reviews-header fade-in">
     <div>
       <h1>Reviews</h1>
-      <p class="subtitle">Code review history and analysis results</p>
+      <p class="subtitle">
+        Code review history and analysis results
+        <span *ngIf="currentProvider" class="provider-label">({{ currentProviderLabel }})</span>
+      </p>
     </div>
     <div class="header-actions">
       <div class="filter-container">
-        <mat-form-field appearance="outline">
-          <mat-select [value]="filterProvider" (selectionChange)="onProviderFilterChange($event.value)">
-            <mat-option value="all">All sources</mat-option>
-            <mat-option value="github">GitHub</mat-option>
-            <mat-option value="gitlab">GitLab</mat-option>
-            <mat-option value="bitbucket">Bitbucket</mat-option>
-          </mat-select>
-        </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-select [value]="filterSeverity" (selectionChange)="onFilterChange($event.value)">
             <mat-option value="all">All Issues</mat-option>
