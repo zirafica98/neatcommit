@@ -197,7 +197,7 @@ app.get('/api/reviews', async (req: Request, res: Response) => {
       const { verifyAccessToken } = await import('./services/auth.service');
       payload = verifyAccessToken(token);
       if (payload) {
-        userId = payload.userId;
+        userId = payload.userId ?? null;
       }
     }
 
@@ -301,7 +301,7 @@ app.get('/api/reviews/:id', async (req: Request, res: Response) => {
       const { verifyAccessToken } = await import('./services/auth.service');
       const payload = verifyAccessToken(token);
       if (payload) {
-        userId = payload.userId;
+        userId = payload.userId ?? null;
       }
     }
 
@@ -419,7 +419,7 @@ app.get('/api/issues', async (req: Request, res: Response) => {
       const { verifyAccessToken } = await import('./services/auth.service');
       const payload = verifyAccessToken(token);
       if (payload) {
-        userId = payload.userId;
+        userId = payload.userId ?? null;
       }
     }
 
