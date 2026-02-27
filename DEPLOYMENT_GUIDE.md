@@ -1,30 +1,29 @@
 # 🚀 Deployment Guide - Elementer
 
-Kompletan vodič za deployovanje aplikacije na free servere u 3 faze.
+Kompletan vodič za deployovanje aplikacije u 3 faze (Supabase + Render + Vercel).
 
 ## 📋 Pregled
 
-- **Faza 1: Baza podataka** → Render PostgreSQL (FREE)
+- **Faza 1: Baza podataka** → Supabase PostgreSQL (PREPORUČENO)
 - **Faza 2: Backend** → Render Web Service (FREE)
-- **Faza 3: Frontend** → Heroku (FREE)
+- **Faza 3: Frontend** → Vercel (FREE)
 
 ---
 
 ## 🔵 FAZA 1: Baza Podataka (PostgreSQL)
 
-### Opcije za FREE PostgreSQL:
+### Opcije za PostgreSQL:
 
-#### **Opcija 1: Render PostgreSQL (PREPORUČENO)**
-- ✅ Besplatno do 90 dana (pa $7/mesec)
-- ✅ 1GB storage
-- ✅ Automatski backup
-- ✅ Lako povezivanje sa Render backend-om
-
-#### **Opcija 2: Supabase**
+#### **Opcija 1: Supabase (PREPORUČENO)**
 - ✅ Besplatno zauvek
 - ✅ 500MB storage
 - ✅ 2GB bandwidth/mesec
 - ✅ Postgres 15
+- ✅ SQL editor, backup alati, monitoring
+
+#### **Opcija 2: Render PostgreSQL**
+- ✅ Jednostavno povezivanje sa Render backend-om
+- ⚠️ Free plan je vremenski ograničen
 
 #### **Opcija 3: Neon**
 - ✅ Besplatno zauvek
@@ -32,43 +31,39 @@ Kompletan vodič za deployovanje aplikacije na free servere u 3 faze.
 - ✅ Unlimited projects
 - ✅ Postgres 15
 
-### Koraci za Render PostgreSQL:
+### Koraci za Supabase PostgreSQL:
 
-1. **Kreiraj Render nalog**
-   - Idi na https://render.com
+1. **Kreiraj Supabase nalog**
+   - Idi na https://supabase.com
    - Sign up sa GitHub nalogom
 
 2. **Kreiraj PostgreSQL bazu**
-   - Dashboard → New → PostgreSQL
-   - **Name**: `elementer-db`
-   - **Database**: `elementer`
-   - **User**: `elementer_user`
+   - Dashboard → **New Project**
+   - **Organization**: izaberi svoju
+   - **Project name**: `elementer`
+   - **Database password**: generiši jak password i sačuvaj
    - **Region**: Izaberi najbližu (npr. Frankfurt)
-   - **PostgreSQL Version**: 15
-   - **Plan**: Free (90 dana, pa $7/mesec)
-   - Klikni **Create Database**
+   - **Plan**: Free
+   - Klikni **Create project**
 
-3. **Sačuvaj Connection String**
-   - Render će automatski kreirati **Internal Database URL**
-   - Format: `postgresql://user:password@host:port/database`
-   - **SAČUVAJ OVU VREDNOST** - trebaće ti za backend!
-   -HOST NAME: dpg-d6b1s30boq4c73bjt0i0-a
-   -POST : 5432
-   -USERNAME: elementer_user
-   -PASS: Akaib7qLv6igREqfq3mkp6cwLlMCsq92
-   - Format: `postgresql://elementer_user:Akaib7qLv6igREqfq3mkp6cwLlMCsq92@dpg-d6b1s30boq4c73bjt0i0-a:5432/elementer`
+3. **Sačuvaj Supabase connection string**
+   - Supabase Dashboard → **Project Settings** → **Database** → **Connection string**
+   - U production-u koristi `sslmode=require`
+   - Primer:
+     - `DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres?sslmode=require`
+   - **Napomena:** Ako koristiš pooler endpoint, stavi pooler URL u `DATABASE_URL`, a za migracije privremeno koristi direct URL.
 
 4. **Test konekcije (opciono)**
    ```bash
-   # Lokalno testiranje sa Render bazom
+   # Lokalno testiranje sa Supabase bazom
    cd backend
    # Dodaj DATABASE_URL u .env
-   echo "DATABASE_URL=postgresql://user:password@host:port/database" >> .env
+   echo "DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres?sslmode=require" >> .env
    npx prisma migrate deploy
    ```
 
 ### ✅ Provera Faze 1:
-- [ ] PostgreSQL baza kreirana na Render
+- [ ] PostgreSQL baza kreirana na Supabase
 - [ ] Connection string sačuvan
 - [ ] Baza je dostupna i radi
 

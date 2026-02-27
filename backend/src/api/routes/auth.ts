@@ -524,6 +524,258 @@ router.post('/github/callback', async (req: Request, res: Response) => {
   }
 });
 
+// --- GitLab OAuth (redirect flow, isto kao GitHub) ---
+const gitlabBaseUrl = (): string => {
+  const api = process.env.GITLAB_API_URL;
+  if (api) return api.replace(/\/api\/v4\/?$/, '');
+  return 'https://gitlab.com';
+};
+
+/**
+ * GET /api/auth/gitlab
+ * Redirektuje korisnika na GitLab OAuth. Posle prijave GitLab šalje nazad na /api/auth/gitlab/callback.
+ */
+router.get('/gitlab', (_req: Request, res: Response) => {
+  const clientId = process.env.GITLAB_CLIENT_ID;
+  const clientSecret = process.env.GITLAB_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    logger.error('GITLAB_CLIENT_ID or GITLAB_CLIENT_SECRET not configured.');
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_oauth_not_configured`);
+  }
+  const base = gitlabBaseUrl();
+  const redirectUri = `${env.API_URL}/api/auth/gitlab/callback`;
+  const state = Math.random().toString(36).substring(7);
+  const scope = 'read_user api';
+  const url = `${base}/oauth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scope)}&state=${state}`;
+  logger.info('Redirecting to GitLab OAuth', { redirectUri });
+  res.redirect(url);
+});
+
+/**
+ * GET /api/auth/gitlab/callback
+ * GitLab OAuth callback: razmena code za token, dohvatanje usera, kreiranje/pronalaženje User + Installation, redirect na frontend sa JWT.
+ */
+router.get('/gitlab/callback', async (req: Request, res: Response) => {
+  const code = req.query.code;
+  const errorParam = req.query.error;
+  if (errorParam) {
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_${errorParam}`);
+  }
+  if (!code || typeof code !== 'string') {
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_missing_code`);
+  }
+  const clientId = process.env.GITLAB_CLIENT_ID;
+  const clientSecret = process.env.GITLAB_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_oauth_not_configured`);
+  }
+  const base = gitlabBaseUrl();
+  const gitlabApiUrl = process.env.GITLAB_API_URL || 'https://gitlab.com/api/v4';
+  const redirectUri = `${env.API_URL}/api/auth/gitlab/callback`;
+
+  try {
+    const tokenRes = await fetch(`${base}/oauth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        redirect_uri: redirectUri,
+      }),
+    });
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text();
+      logger.warn('GitLab token exchange failed', { status: tokenRes.status, body: errText });
+      return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_token_exchange_failed`);
+    }
+    const tokenData = (await tokenRes.json()) as { access_token?: string };
+    const accessToken = tokenData.access_token;
+    if (!accessToken) {
+      return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_no_token`);
+    }
+
+    const userRes = await fetch(`${gitlabApiUrl}/user`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!userRes.ok) {
+      return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_user_fetch_failed`);
+    }
+    const glUser = (await userRes.json()) as { id: number; username?: string; name?: string; email?: string };
+    const gitlabId = glUser.id;
+    const username = (glUser.username || `gitlab_${gitlabId}`).slice(0, 100);
+
+    let user = await prisma.user.findUnique({ where: { gitlabId } });
+    if (!user) {
+      const existing = await prisma.user.findUnique({ where: { username } });
+      const finalUsername = existing ? `gitlab_${gitlabId}` : username;
+      user = await prisma.user.create({
+        data: {
+          gitlabId,
+          username: finalUsername,
+          name: glUser.name ?? null,
+          email: glUser.email ?? null,
+        },
+      });
+    }
+
+    const extId = -Math.abs((gitlabId * 1000) % 2147483647) - 5000000;
+    let installation = await prisma.installation.findFirst({
+      where: { userId: user.id, provider: 'gitlab' },
+    });
+    if (!installation) {
+      installation = await prisma.installation.create({
+        data: {
+          installationId: extId,
+          accountId: 0,
+          accountType: 'User',
+          accountLogin: user.username,
+          targetType: 'User',
+          userId: user.id,
+          provider: 'gitlab',
+          gitlabAccessToken: accessToken,
+        },
+      });
+    } else {
+      await prisma.installation.update({
+        where: { id: installation.id },
+        data: { gitlabAccessToken: accessToken, updatedAt: new Date() },
+      });
+    }
+
+    const jwtAccessToken = generateAccessToken(user, 'gitlab');
+    const jwtRefreshToken = generateRefreshToken(user, 'gitlab');
+    const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
+    redirectUrl.searchParams.set('access_token', jwtAccessToken);
+    redirectUrl.searchParams.set('refresh_token', jwtRefreshToken);
+    return res.redirect(redirectUrl.toString());
+  } catch (err) {
+    logger.error('GitLab OAuth callback failed:', err);
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=gitlab_auth_failed`);
+  }
+});
+
+// --- Bitbucket OAuth (redirect flow) ---
+/**
+ * GET /api/auth/bitbucket
+ * Redirektuje korisnika na Bitbucket OAuth.
+ */
+router.get('/bitbucket', (_req: Request, res: Response) => {
+  const clientId = process.env.BITBUCKET_CLIENT_ID;
+  const clientSecret = process.env.BITBUCKET_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    logger.error('BITBUCKET_CLIENT_ID or BITBUCKET_CLIENT_SECRET not configured.');
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_oauth_not_configured`);
+  }
+  const redirectUri = `${env.API_URL}/api/auth/bitbucket/callback`;
+  const state = Math.random().toString(36).substring(7);
+  const url = `https://bitbucket.org/site/oauth2/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&state=${state}`;
+  logger.info('Redirecting to Bitbucket OAuth', { redirectUri });
+  res.redirect(url);
+});
+
+/**
+ * GET /api/auth/bitbucket/callback
+ * Bitbucket OAuth callback: razmena code za token, dohvatanje usera, redirect na frontend sa JWT.
+ */
+router.get('/bitbucket/callback', async (req: Request, res: Response) => {
+  const code = req.query.code;
+  const errorParam = req.query.error;
+  if (errorParam) {
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_${errorParam}`);
+  }
+  if (!code || typeof code !== 'string') {
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_missing_code`);
+  }
+  const clientId = process.env.BITBUCKET_CLIENT_ID;
+  const clientSecret = process.env.BITBUCKET_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_oauth_not_configured`);
+  }
+
+  try {
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`, 'utf8').toString('base64');
+    const tokenRes = await fetch('https://bitbucket.org/site/oauth2/access_token', {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${basicAuth}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({ grant_type: 'authorization_code', code }),
+    });
+    if (!tokenRes.ok) {
+      const errText = await tokenRes.text();
+      logger.warn('Bitbucket token exchange failed', { status: tokenRes.status, body: errText });
+      return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_token_exchange_failed`);
+    }
+    const tokenData = (await tokenRes.json()) as { access_token?: string };
+    const accessToken = tokenData.access_token;
+    if (!accessToken) {
+      return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_no_token`);
+    }
+
+    const userRes = await fetch('https://api.bitbucket.org/2.0/user', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!userRes.ok) {
+      return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_user_fetch_failed`);
+    }
+    const bbUser = (await userRes.json()) as { uuid?: string; username?: string; display_name?: string };
+    const bitbucketUuid = bbUser.uuid || '';
+    const displayName = (bbUser.display_name || bbUser.username || `bitbucket_${bitbucketUuid.slice(0, 8)}`).slice(0, 100);
+    const username = (bbUser.username || `bitbucket_${bitbucketUuid.slice(0, 8)}`).slice(0, 100);
+
+    let user = await prisma.user.findUnique({ where: { bitbucketUuid: bitbucketUuid || undefined } });
+    if (!user) {
+      const existing = await prisma.user.findUnique({ where: { username } });
+      const finalUsername = existing ? `bitbucket_${bitbucketUuid.slice(0, 8)}` : username;
+      user = await prisma.user.create({
+        data: {
+          bitbucketUuid: bitbucketUuid || null,
+          username: finalUsername,
+          name: displayName,
+        },
+      });
+    }
+
+    const extId = -Math.abs(bitbucketUuid.split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0)) - 6000000;
+    let installation = await prisma.installation.findFirst({
+      where: { userId: user.id, provider: 'bitbucket' },
+    });
+    if (!installation) {
+      installation = await prisma.installation.create({
+        data: {
+          installationId: extId,
+          accountId: 0,
+          accountType: 'User',
+          accountLogin: user.username,
+          targetType: 'User',
+          userId: user.id,
+          provider: 'bitbucket',
+          bitbucketAccessToken: accessToken,
+          bitbucketUsername: bbUser.username ?? user.username,
+        },
+      });
+    } else {
+      await prisma.installation.update({
+        where: { id: installation.id },
+        data: { bitbucketAccessToken: accessToken, bitbucketUsername: bbUser.username ?? user.username, updatedAt: new Date() },
+      });
+    }
+
+    const jwtAccessToken = generateAccessToken(user, 'bitbucket');
+    const jwtRefreshToken = generateRefreshToken(user, 'bitbucket');
+    const redirectUrl = new URL(`${env.FRONTEND_URL}/auth/callback`);
+    redirectUrl.searchParams.set('access_token', jwtAccessToken);
+    redirectUrl.searchParams.set('refresh_token', jwtRefreshToken);
+    return res.redirect(redirectUrl.toString());
+  } catch (err) {
+    logger.error('Bitbucket OAuth callback failed:', err);
+    return res.redirect(`${env.FRONTEND_URL}/auth/login?error=bitbucket_auth_failed`);
+  }
+});
+
 /**
  * POST /api/auth/refresh
  * 

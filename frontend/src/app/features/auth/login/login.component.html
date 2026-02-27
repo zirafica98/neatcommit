@@ -14,7 +14,7 @@
         {{ loginError }}
       </div>
 
-      <p class="description">Prijavite se jednim od načina. Videćete samo podatke za izabrani provider.</p>
+      <p class="description">Prijavite se sa GitHub nalogom.</p>
 
       <!-- 1. GitHub -->
       <div class="provider-section">
@@ -32,50 +32,6 @@
               <li>Redirect na GitHub → instalacija NeatCommit app → izbor repozitorijuma → povratak u app.</li>
             </ol>
           </div>
-        </div>
-      </div>
-
-      <!-- 2. GitLab -->
-      <div class="provider-section">
-        <button mat-stroked-button (click)="showGitLabForm = !showGitLabForm" class="full-width provider-button">
-          <mat-icon>code</mat-icon>
-          Sign in with GitLab
-        </button>
-        <div *ngIf="showGitLabForm" class="provider-form">
-          <p class="provider-hint">Unesite Personal ili Project Access Token (Scope: <code>api</code>, <code>read_user</code>). Videćete samo GitLab MR-e i repozitorijume.</p>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>GitLab Access Token</mat-label>
-            <input matInput type="password" [(ngModel)]="gitlabToken" placeholder="glpat-..." />
-          </mat-form-field>
-          <button mat-raised-button (click)="loginWithGitLab()" [disabled]="!gitlabToken?.trim() || gitlabLoading" class="full-width">
-            <mat-spinner *ngIf="gitlabLoading" diameter="20" class="inline-spinner"></mat-spinner>
-            <span *ngIf="!gitlabLoading">Prijava sa GitLab</span>
-            <span *ngIf="gitlabLoading">Prijava...</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- 3. Bitbucket -->
-      <div class="provider-section">
-        <button mat-stroked-button (click)="showBitbucketForm = !showBitbucketForm" class="full-width provider-button">
-          <mat-icon>code</mat-icon>
-          Sign in with Bitbucket
-        </button>
-        <div *ngIf="showBitbucketForm" class="provider-form">
-          <p class="provider-hint">Koristite Bitbucket username i App Password (Repository: Read/Write). Videćete samo Bitbucket PR-ove i repozitorijume.</p>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Bitbucket username ili email</mat-label>
-            <input matInput [(ngModel)]="bitbucketUsername" placeholder="username" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>App Password</mat-label>
-            <input matInput type="password" [(ngModel)]="bitbucketAppPassword" placeholder="App password" />
-          </mat-form-field>
-          <button mat-raised-button (click)="loginWithBitbucket()" [disabled]="!bitbucketUsername?.trim() || !bitbucketAppPassword?.trim() || bitbucketLoading" class="full-width">
-            <mat-spinner *ngIf="bitbucketLoading" diameter="20" class="inline-spinner"></mat-spinner>
-            <span *ngIf="!bitbucketLoading">Prijava sa Bitbucket</span>
-            <span *ngIf="bitbucketLoading">Prijava...</span>
-          </button>
         </div>
       </div>
 

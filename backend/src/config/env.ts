@@ -30,8 +30,12 @@ const envSchema = z.object({
   GITHUB_WEBHOOK_SECRET: z.string(),
   GITLAB_WEBHOOK_SECRET: z.string().optional(),
   GITLAB_API_URL: z.string().url().optional(),
+  GITLAB_CLIENT_ID: z.string().optional(),
+  GITLAB_CLIENT_SECRET: z.string().optional(),
   BITBUCKET_WEBHOOK_SECRET: z.string().optional(),
   BITBUCKET_API_URL: z.string().url().optional(),
+  BITBUCKET_CLIENT_ID: z.string().optional(),
+  BITBUCKET_CLIENT_SECRET: z.string().optional(),
 
   // OpenAI
   OPENAI_API_KEY: z.string(),

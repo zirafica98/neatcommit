@@ -9,15 +9,19 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: process.env.DATABASE_URL || 'postgresql://elementer_user:Akaib7qLv6igREqfq3mkp6cwLlMCsq92@dpg-d6b1s30boq4c73bjt0i0-a:5432/elementer',
+      url: process.env.DATABASE_URL,
     },
   },
 });
 
 async function testConnection() {
   try {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is not set. Add it to backend/.env before running this script.');
+    }
+
     console.log('🔄 Testing database connection...');
-    console.log('📍 Connection string:', process.env.DATABASE_URL ? 'Using DATABASE_URL from env' : 'Using hardcoded string');
+    console.log('📍 Connection string: Using DATABASE_URL from env');
     
     // Test connection
     await prisma.$connect();
@@ -39,8 +43,10 @@ async function testConnection() {
   } catch (error) {
     console.error('❌ Connection failed:', error.message);
     if (error.code === 'ENOTFOUND') {
-      console.error('💡 Tip: Hostname might need .render.com suffix for external connections');
-      console.error('💡 Try using External Connection String from Render dashboard');
+      console.error('💡 Tip: Verify host/port and DNS in your Supabase connection string');
+    }
+    if (error.code === 'P1001') {
+      console.error('💡 Tip: For Supabase use connection string with sslmode=require');
     }
     process.exit(1);
   } finally {

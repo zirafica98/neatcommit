@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,6 +17,18 @@ const ERROR_MESSAGES: Record<string, string> = {
   installation_not_found: 'Installation not found. Try signing in with GitHub again.',
   auth_failed: 'Authentication failed. Please try again.',
   oauth_not_configured: 'GitHub login is not configured.',
+  gitlab_oauth_not_configured: 'GitLab login is not configured on the server.',
+  gitlab_token_exchange_failed: 'GitLab authentication failed. Please try again.',
+  gitlab_no_token: 'GitLab did not return a token. Please try again.',
+  gitlab_user_fetch_failed: 'Could not load your GitLab profile. Please try again.',
+  gitlab_auth_failed: 'GitLab authentication failed. Please try again.',
+  gitlab_missing_code: 'GitLab did not return an authorization code. Please try again.',
+  bitbucket_oauth_not_configured: 'Bitbucket login is not configured on the server.',
+  bitbucket_missing_code: 'Bitbucket did not return an authorization code. Please try again.',
+  bitbucket_token_exchange_failed: 'Bitbucket authentication failed. Please try again.',
+  bitbucket_no_token: 'Bitbucket did not return a token. Please try again.',
+  bitbucket_user_fetch_failed: 'Could not load your Bitbucket profile. Please try again.',
+  bitbucket_auth_failed: 'Bitbucket authentication failed. Please try again.',
 };
 
 @Component({
@@ -25,7 +37,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    FormsModule,
     MatButtonModule,
     MatCardModule,
     MatIconModule,
@@ -43,13 +54,6 @@ export class LoginComponent implements OnInit {
   loading = false;
   loginError: string | null = null;
   showHowItWorks = false;
-  showGitLabForm = false;
-  showBitbucketForm = false;
-  gitlabToken = '';
-  gitlabLoading = false;
-  bitbucketUsername = '';
-  bitbucketAppPassword = '';
-  bitbucketLoading = false;
 
   constructor(
     private fb: FormBuilder,
@@ -115,42 +119,10 @@ export class LoginComponent implements OnInit {
   }
 
   loginWithGitLab(): void {
-    if (!this.gitlabToken?.trim()) return;
-    this.loginError = null;
-    this.loading = true;
-    this.gitlabLoading = true;
-    this.authService.loginWithGitLab(this.gitlabToken.trim()).subscribe({
-      next: (response) => {
-        this.loading = false;
-        this.gitlabLoading = false;
-        const url = this.returnUrl || (response.user?.role === 'ADMIN' ? '/app/admin' : '/app/dashboard');
-        this.router.navigate([url]);
-      },
-      error: (err) => {
-        this.loading = false;
-        this.gitlabLoading = false;
-        this.loginError = err.error?.error || err.error?.message || 'GitLab prijava nije uspela. Proverite token.';
-      },
-    });
+    this.authService.loginWithGitLab();
   }
 
   loginWithBitbucket(): void {
-    if (!this.bitbucketUsername?.trim() || !this.bitbucketAppPassword?.trim()) return;
-    this.loginError = null;
-    this.loading = true;
-    this.bitbucketLoading = true;
-    this.authService.loginWithBitbucket(this.bitbucketUsername.trim(), this.bitbucketAppPassword.trim()).subscribe({
-      next: (response) => {
-        this.loading = false;
-        this.bitbucketLoading = false;
-        const url = this.returnUrl || (response.user?.role === 'ADMIN' ? '/app/admin' : '/app/dashboard');
-        this.router.navigate([url]);
-      },
-      error: (err) => {
-        this.loading = false;
-        this.bitbucketLoading = false;
-        this.loginError = err.error?.error || err.error?.message || 'Bitbucket prijava nije uspela. Proverite username i App Password.';
-      },
-    });
+    this.authService.loginWithBitbucket();
   }
 }

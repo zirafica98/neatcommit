@@ -155,42 +155,17 @@ export class AuthService {
   }
 
   /**
-   * Login sa GitLab Personal/Project Access Token. Prikazuju se samo GitLab podaci.
+   * Initiate GitLab OAuth login (redirect na GitLab, pa callback na naš backend, pa redirect na frontend sa tokenima).
    */
-  loginWithGitLab(accessToken: string): Observable<{ user: User; accessToken: string; refreshToken: string }> {
-    return this.apiService.post<{ user: User; accessToken: string; refreshToken: string }>('/api/auth/gitlab/login', {
-      accessToken,
-    }).pipe(
-      tap((response) => {
-        if (response.accessToken) localStorage.setItem('access_token', response.accessToken);
-        if (response.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
-        this.setUser(response.user);
-      }),
-      catchError((error) => {
-        console.error('GitLab login error:', error);
-        return throwError(() => error);
-      })
-    );
+  loginWithGitLab(): void {
+    window.location.href = `${environment.apiUrl}/api/auth/gitlab`;
   }
 
   /**
-   * Login sa Bitbucket username + App Password. Prikazuju se samo Bitbucket podaci.
+   * Initiate Bitbucket OAuth login (redirect na Bitbucket, pa callback na naš backend, pa redirect na frontend sa tokenima).
    */
-  loginWithBitbucket(username: string, appPassword: string): Observable<{ user: User; accessToken: string; refreshToken: string }> {
-    return this.apiService.post<{ user: User; accessToken: string; refreshToken: string }>('/api/auth/bitbucket/login', {
-      username,
-      appPassword,
-    }).pipe(
-      tap((response) => {
-        if (response.accessToken) localStorage.setItem('access_token', response.accessToken);
-        if (response.refreshToken) localStorage.setItem('refresh_token', response.refreshToken);
-        this.setUser(response.user);
-      }),
-      catchError((error) => {
-        console.error('Bitbucket login error:', error);
-        return throwError(() => error);
-      })
-    );
+  loginWithBitbucket(): void {
+    window.location.href = `${environment.apiUrl}/api/auth/bitbucket`;
   }
 
   /**
